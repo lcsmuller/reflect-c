@@ -40,13 +40,26 @@ int
 main()
 {
     enum cogchef_comment_state state = COGCHEF_COMMENT_OFF;
-    unsigned count;
-    char buf[2048];
+    size_t bufsize = 2048;
+    size_t count;
+    char *buf = malloc(bufsize);
 
-    while ((count = fread(buf, sizeof(char), sizeof(buf), stdin))) {
-        buf[count - 1] = '\0';
+    if (!buf) return EXIT_FAILURE;
+
+    while ((count = fread(buf, sizeof(char), bufsize - 1, stdin))) {
+        if (count >= bufsize - 1) {
+            char *tmp = realloc(buf, bufsize * 2);
+            if (!tmp) {
+                free(buf);
+                return EXIT_FAILURE;
+            }
+            buf = tmp;
+            bufsize *= 2;
+        }
+        buf[count] = '\0';
         expandComments(buf, state);
     }
 
+    free(buf);
     return EXIT_SUCCESS;
 }
