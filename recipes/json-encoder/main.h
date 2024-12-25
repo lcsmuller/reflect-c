@@ -16,7 +16,7 @@
 #ifdef COGCHEF_HEADER
 
 /*#! #define JSONB_HEADER */
-/*#! #include "json-build.h" */
+/*#! #include "submodules/json-build/json-build.h" */
 
 #define COGCHEF_STRUCT_public(_type)                                          \
     jsonbcode _type##_to_jsonb(jsonb *b, char buf[], size_t size,             \

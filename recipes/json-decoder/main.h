@@ -31,8 +31,8 @@
 
 /*#! #define JSMN_STRICT */
 /*#! #define JSMN_HEADER */
-/*#! #include "jsmn.h" */
-/*#! #include "jsmn-find.h" */
+/*#! #include "submodules/jsmn/jsmn.h" */
+/*#! #include "submodules/jsmn-find/jsmn-find.h" */
 
 #define COGCHEF_STRUCT_public(_type)                                          \
     long _type##_from_jsmnf(jsmnf_pair *root, const char *js,                 \

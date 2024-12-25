@@ -13,5 +13,6 @@
 !Makefile
 !test
 !utils
+!submodules
 !docs
 !docs/*

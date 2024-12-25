@@ -16,7 +16,8 @@ LDLIBS  += -lcogchef
 all: $(OUT_H) $(EXES)
 
 $(OUT_H):
-	@ $(BUILD) DFLAGS="$(DFLAGS)" debug
+	@ $(BUILD) debug
+#	@ $(BUILD) DFLAGS="$(DFLAGS)" debug
 
 clean:
 	@ rm -f $(EXES)
