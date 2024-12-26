@@ -1,0 +1,8 @@
+[submodule "test/json-build"]
+	path = test/json-build
+	url = https://github.com/lcsmuller/json-build
+	branch = master
+[submodule "submodules/oa-hash"]
+	path = submodules/oa-hash
+	url = https://github.com/lcsmuller/oa-hash
+	branch = main

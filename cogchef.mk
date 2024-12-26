@@ -7,8 +7,12 @@ EXTEND = $(EXTEND_NO_EXT).PRE.h
 OUT_C  = $(OUT_NO_EXT).c
 OUT_H  = $(OUT_NO_EXT).h
 OUT_O  = $(OUT_NO_EXT).o
+
 # Dependencies
-OBJS = utils/tablec.o
+SUBMODULES_DIR = submodules
+OA_HASH_DIR    = $(SUBMODULES_DIR)/oa-hash
+OBJS           = $(OA_HASH_DIR)/oa_hash.o
+
 # Resulting library
 LIB_NO_EXT = libcogchef
 ARLIB = $(LIB_NO_EXT).a
@@ -28,13 +32,19 @@ DOXYGEN_DESC_EXPAND = "/**\n * @file $@\n * @author CogChef\n * @brief CogChef g
 
 all: $(ARLIB)
 
-$(ARLIB): $(OUT_O) $(OBJS)
+$(ARLIB): $(OBJS) $(OUT_O)
 	@ echo "Creating $@"
 	$(AR) $(ARFLAGS) $@ $^
+
+$(OBJS):
+	@ echo "Building $@"
+	git submodule update --init --recursive
+	$(MAKE) -C $(OA_HASH_DIR)
 
 $(OUT_O): $(OUT_C) $(OUT_H)
 	@ echo "Creating $@"
 	$(CC) -c $(CFLAGS) $< -o $@
+
 .c.o:
 	@ echo "Creating $@"
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -78,7 +88,12 @@ echo:
 	@ echo 'HEADERS: $(HEADERS)'
 
 clean:
-	@ rm -f $(OUT_H) $(OUT_C) $(OUT_O) $(OBJS) $(ARLIB)
+	@ rm -f $(OUT_H) $(OUT_C) $(OUT_O) $(ARLIB)
 	@ rm -f $(HEADERS) $(POST_EXPAND)
+	@ $(MAKE) -C $(OA_HASH_DIR) clean
+
+purge: clean
+	@ echo "Purging submodules"
+	git submodule deinit --all -f
 
 .PHONY: headers clean

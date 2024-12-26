@@ -9,7 +9,10 @@ STRUCT(private, bar)
 STRUCT_END
 
 STRUCT(public, baz)
-    FIELD_STRUCT_PTR(data, bar, *)
+    FIELD_STRUCT_PTR(a, bar, *)
+    FIELD_STRUCT_PTR(b, bar, *)
+    FIELD_STRUCT_PTR(c, bar, *)
+    FIELD_PTR(d, char, *)
 STRUCT_END
 
 LIST(public, bazz)

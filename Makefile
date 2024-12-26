@@ -15,24 +15,27 @@ TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.PRE.h); for header in $$headers; 
 BUILD = $(MAKE) EXTEND_NO_EXT=$(EXTEND_NO_EXT_EXPAND) OUT_NO_EXT=$(OUT) DFLAGS="$(DFLAGS)" -f cogchef.mk
 
 all:
-	@ touch $(TEMPFILE) && $(TEMPFILE_EXPAND)
-	@ $(BUILD) TEMPFILE=$(TEMPFILE) || rm -f $(TEMPFILE)
+	@ touch $(TEMPFILE)  && $(TEMPFILE_EXPAND)
+	$(BUILD) TEMPFILE=$(TEMPFILE) || rm -f $(TEMPFILE)
 	@ rm -f $(TEMPFILE)
 
 debug:
 	@ echo "Building on debug mode"
-	@ CFLAGS="-g" $(MAKE)
+	CFLAGS="-g" $(MAKE)
 
 headers:
-	@ $(BUILD) HEADERS=$(HEADERS_EXPAND) $@
+	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
 echo:
 	@ echo 'EXTEND: $(EXTEND)'
 	@ echo 'API_DIR: $(API_DIR)'
-	@ $(BUILD) HEADERS=$(HEADERS_EXPAND) $@
+	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
 clean:
 	@ rm -f $(TEMPFILE)
-	@ $(BUILD) HEADERS=$(HEADERS_EXPAND) $@
+	$(MAKE) -f cogchef.mk $@
+
+purge: clean
+	$(MAKE) -f cogchef.mk $@
 
 .PHONY: headers echo clean

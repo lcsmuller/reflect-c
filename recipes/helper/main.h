@@ -3,7 +3,7 @@
 #ifdef COGCHEF_HELPER
 #ifdef COGCHEF_HEADER
 
-/*#! #include "utils/tablec.h" */
+/*#! #include "submodules/oa-hash/oa_hash.h" */
 
 enum cogchef_modes { COGCHEF_MODES_WRITE, COGCHEF_MODES_READONLY };
 
@@ -25,7 +25,7 @@ struct cogchef;
 
 typedef struct cogchef *(*const cogchef_from_type_t)(void *, enum cogchef_modes, struct cogchef *);
 
-struct cogchef_field {
+struct cogchef {
     const unsigned ptr_depth;
     const size_t size;
     const struct {
@@ -35,19 +35,18 @@ struct cogchef_field {
     const enum cogchef_types type;
     cogchef_from_type_t init;
     void *value;
-};
-
-struct cogchef {
-    size_t size;
-    size_t nfields;
-    struct tablec_ht fields;
+    struct oa_hash ht;
     enum cogchef_modes mode;
 };
 
-/*#!
-#define cogchef_get(cogchef, key) (*(void **)tablec_get(&cogchef->fields, key))
-#define cogchef_set(cogchef, key, value) ((cogchef->mode & COGCHEF_MODES_WRITE) ? tablec_set(&cogchef->fields, key, value) : (abort(), NULL))
-*/
+struct cogchef *cogchef_get(struct cogchef *cogchef,
+                            const char *key,
+                            const size_t key_len);
+
+struct cogchef *cogchef_set(struct cogchef *cogchef,
+                            const char *key,
+                            const size_t key_len,
+                            void *value);
 
 #define COGCHEF_STRUCT_public(_type)                                          \
     struct cogchef *cogchef_from_##_type(struct _type *self,                  \
@@ -61,6 +60,23 @@ struct cogchef {
 /*#! #include <stdlib.h> */
 /*#! #include <string.h> */
 
+struct cogchef *
+cogchef_get(struct cogchef *cogchef, const char *key, const size_t key_len)
+{
+    return oa_hash_get(&cogchef->ht, key, key_len);
+}
+
+struct cogchef *
+cogchef_set(struct cogchef *cogchef,
+            const char *key,
+            const size_t key_len,
+            void *value)
+{
+    return (cogchef->mode & COGCHEF_MODES_WRITE)
+               ? oa_hash_set(&cogchef->ht, key, key_len, value)
+               : NULL;
+}
+
 #define COGCHEF_STRUCT_private(_type)                                         \
     static struct cogchef *cogchef_from_##_type(struct _type *self,           \
                                                 enum cogchef_modes mode,      \
@@ -71,21 +87,23 @@ struct cogchef {
 #define PTR_DEPTH(_decor) #_decor[0] == '*' ? sizeof(#_decor) - 1 : 0
 
 #define COGCHEF_STRUCT_private(_type)                                         \
-    static const struct cogchef_field _type##__fields[] = {
+    static const struct cogchef _type##__fields[] = {                         \
+        { 0, sizeof(struct _type), { 5, "$self" }, COGCHEF_TYPES__struct,     \
+            NULL, NULL, { 0 }, 0 },
 #define COGCHEF_FIELD_CUSTOM(_name, _type, _decor, _func, _default_value)     \
         { PTR_DEPTH(_decor), sizeof(_type _decor),                            \
             { sizeof(#_name) - 1, #_name }, COGCHEF_TYPES__##_type, NULL,     \
-            NULL },
+            NULL, { 0 }, 0 },
 #define COGCHEF_FIELD_STRUCT_PTR(_name, _type, _decor)                        \
         { PTR_DEPTH(_decor), sizeof(struct _type _decor),                     \
             { sizeof(#_name) - 1, #_name }, COGCHEF_TYPES__struct,            \
-            (cogchef_from_type_t)cogchef_from_##_type, NULL },
+            (cogchef_from_type_t)cogchef_from_##_type, NULL, { 0 }, 0 },
 #define COGCHEF_FIELD_PRINTF(_name, _type, _printf_type, _scanf_type)         \
         { 0, sizeof(_type), { sizeof(#_name) - 1, #_name },                   \
-            COGCHEF_TYPES__##_type, NULL, NULL },
+            COGCHEF_TYPES__##_type, NULL, NULL, { 0 }, 0 },
 #define COGCHEF_FIELD_ENUM(_name, _type)                                      \
         { 0, sizeof(enum _type), { sizeof(#_name) - 1, #_name },              \
-            COGCHEF_TYPES__int, NULL, NULL },
+            COGCHEF_TYPES__int, NULL, NULL, { 0 }, 0 },
 #define COGCHEF_STRUCT_END                                                    \
     };
 #define COGCHEF_STRUCT_public COGCHEF_STRUCT_private
@@ -99,16 +117,24 @@ struct cogchef {
     cogchef_from_##_type(                                                     \
         struct _type *self, enum cogchef_modes mode, struct cogchef *saveptr) \
     {                                                                         \
-        struct cogchef_field *fields;                                         \
+        static const size_t capacity =                                        \
+            (sizeof(_type##__fields) / sizeof *_type##__fields) * 2;          \
+        struct oa_hash_entry *buckets = malloc(sizeof *buckets * capacity);   \
+        struct cogchef *fields = malloc(sizeof(_type##__fields));             \
         if (!saveptr && !(saveptr = malloc(sizeof *saveptr))) return NULL;    \
-        saveptr->size = sizeof *self;                                         \
-        saveptr->nfields = sizeof(_type##__fields) / sizeof *_type##__fields; \
-        fields = malloc(sizeof(_type##__fields));                             \
-        memcpy(fields, _type##__fields, sizeof(_type##__fields));             \
-        tablec_init(&saveptr->fields, saveptr->nfields);
+        memcpy(fields++, _type##__fields, sizeof *_type##__fields);           \
+        memcpy(fields, &_type##__fields[1],                                   \
+               sizeof(_type##__fields) - sizeof *_type##__fields);            \
+        oa_hash_init(&saveptr->ht, buckets, capacity);
 #define COGCHEF_FIELD_CUSTOM(_name, _type, _decor, _func, _default_value)     \
-        tablec_set(&saveptr->fields, #_name, (fields->value = &self->_name)); \
-        ++fields;
+        oa_hash_set(&saveptr->ht, #_name, sizeof(#_name) - 1,                 \
+                    ((fields->value = &self->_name), fields++));
+#define COGCHEF_FIELD_STRUCT_PTR(_name, _type, _decor)                        \
+        oa_hash_set(&saveptr->ht, #_name, sizeof(#_name) - 1,                 \
+                    ((fields->value = (                                       \
+                        cogchef_from_##_type(self->_name, mode, fields),      \
+                                                          &self->_name        \
+                        ), fields++)));
 #define COGCHEF_STRUCT_END                                                    \
         saveptr->mode = mode;                                                 \
         return saveptr;                                                       \

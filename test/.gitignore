@@ -7,3 +7,4 @@
 !api/*.PRE.h
 !*.h
 !*.c
+!json-build
