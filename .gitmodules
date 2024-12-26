@@ -1,9 +1,0 @@
-[submodule "submodules/jsmn-find"]
-	path = submodules/jsmn-find
-	url = https://github.com/lcsmuller/jsmn-find
-[submodule "submodules/jsmn"]
-	path = submodules/jsmn
-	url = https://github.com/zserge/jsmn
-[submodule "submodules/json-build"]
-	path = submodules/json-build
-	url = https://github.com/lcsmuller/json-build
