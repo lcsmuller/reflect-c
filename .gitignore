@@ -2,6 +2,7 @@
 *
 # But these
 !.gitignore
+!.clang-format
 !README.md
 !KNOWN_BUGS.md
 !licenses
