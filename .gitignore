@@ -5,8 +5,6 @@
 !.clang-format
 !README.md
 !KNOWN_BUGS.md
-!licenses
-!licenses/LICENSE*
 !recipes
 !recipes/*
 !recipes/**/*
