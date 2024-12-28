@@ -15,4 +15,4 @@ Will end up expanding to:
 /*#! hello     whatsup? 
 */
 ```
-Which has been shown to something result in issues once `CogChef` performs its post-expansion. A possible solution is running a `pre-expansion` script that converts all `\` characters it encounters inside of a `CogChef-style comment` to some other character, and then the `post-expansion` should convert it back to the original.
+Which has been shown to something result in issues once `Reflect-C` performs its post-expansion. A possible solution is running a `pre-expansion` script that converts all `\` characters it encounters inside of a `Reflect-C style comment` to some other character, and then the `post-expansion` should convert it back to the original.

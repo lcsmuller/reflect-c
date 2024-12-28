@@ -1,58 +1,58 @@
 #define DEFINITIONS
-#define COGCHEF_RETURN(_type) void
+#define REFLECTC_RETURN(_type) void
 
-#ifdef COGCHEF_DEFINITIONS
+#ifdef REFLECTC_DEFINITIONS
 
 /*#! #include <stddef.h> */
 /*#! #include <stdbool.h> */
 
-#define COGCHEF_STRUCT_private(_type)                                         \
+#define REFLECTC_STRUCT_private(_type)                                        \
     struct _type {
-#define COGCHEF_FIELD(_name, _type, _default_value)                           \
+#define REFLECTC_FIELD(_name, _type, _default_value)                          \
         _type _name;
-#define COGCHEF_FIELD_STRUCT_PTR(_name, _type, _decor)                        \
+#define REFLECTC_FIELD_STRUCT_PTR(_name, _type, _decor)                       \
         struct _type _decor _name;
-#define COGCHEF_FIELD_PTR(_name, _type, _decor)                               \
+#define REFLECTC_FIELD_PTR(_name, _type, _decor)                              \
         _type _decor _name;
-#define COGCHEF_FIELD_CUSTOM(_name, __type, _decor, _func, _default_value)    \
+#define REFLECTC_FIELD_CUSTOM(_name, __type, _decor, _func, _default_value)   \
         _type _decor _name;
-#define COGCHEF_FIELD_PRINTF(_name, _type, printf_type, _scanf_type)          \
+#define REFLECTC_FIELD_PRINTF(_name, _type, printf_type, _scanf_type)         \
         _type _name;
-#define COGCHEF_FIELD_ENUM(_name, _type)                                      \
+#define REFLECTC_FIELD_ENUM(_name, _type)                                     \
         enum _type _name;
-#define COGCHEF_STRUCT_END                                                    \
+#define REFLECTC_STRUCT_END                                                   \
     };
 
-#define COGCHEF_LIST_private(_type)                                           \
+#define REFLECTC_LIST_private(_type)                                          \
     struct _type {                                                            \
         int size;
-#define COGCHEF_ELEMENT(_type)                                                \
+#define REFLECTC_ELEMENT(_type)                                               \
         _type *array;
-#define COGCHEF_ELEMENT_STRUCT(_type)                                         \
+#define REFLECTC_ELEMENT_STRUCT(_type)                                        \
         struct _type *array;
-#define COGCHEF_ELEMENT_PTR(_type, _decor)                                    \
+#define REFLECTC_ELEMENT_PTR(_type, _decor)                                   \
         _type * _decor array;
-#define COGCHEF_LIST_END                                                      \
+#define REFLECTC_LIST_END                                                     \
         /** @private */                                                       \
         int realsize;                                                         \
     };
-#define COGCHEF_LIST_public COGCHEF_LIST_private
+#define REFLECTC_LIST_public REFLECTC_LIST_private
 
-#define COGCHEF_ENUM(_name)                                                   \
+#define REFLECTC_ENUM(_name)                                                  \
     enum _name {
-#define COGCHEF_ENUMERATOR(_enumerator, _value)                               \
+#define REFLECTC_ENUMERATOR(_enumerator, _value)                              \
         _enumerator _value,
-#define COGCHEF_ENUMERATOR_LAST(_enumerator, _value)                          \
+#define REFLECTC_ENUMERATOR_LAST(_enumerator, _value)                         \
         _enumerator _value
-#define COGCHEF_ENUM_END                                                      \
+#define REFLECTC_ENUM_END                                                     \
     };
 
-#define COGCHEF_STRUCT_public COGCHEF_STRUCT_private
-#define COGCHEF_LIST_public COGCHEF_LIST_private
+#define REFLECTC_STRUCT_public REFLECTC_STRUCT_private
+#define REFLECTC_LIST_public REFLECTC_LIST_private
 
-#include "cogchef-assemble.ACTION.h"
+#include "reflect-c_EXPAND.h"
 
-#endif /* COGCHEF_DEFINITIONS */
+#endif /* REFLECTC_DEFINITIONS */
 
 #undef DEFINITIONS
-#undef COGCHEF_RETURN
+#undef REFLECTC_RETURN

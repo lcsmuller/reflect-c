@@ -10,7 +10,7 @@
 !recipes
 !recipes/*
 !recipes/**/*
-!cogchef*.*
+!reflect-c*.*
 !Makefile
 !test
 !submodules

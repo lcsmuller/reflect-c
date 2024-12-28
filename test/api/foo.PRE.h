@@ -1,4 +1,4 @@
-#ifdef COGCHEF_DEFINITIONS
+#ifdef REFLECTC_DEFINITIONS
 /*#! #define BYE 2 */
 #endif
 

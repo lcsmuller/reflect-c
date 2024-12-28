@@ -8,16 +8,16 @@
 
 static const char *
 json_stringify(struct jsonb *jb,
-               struct cogchef *cogchef,
+               struct reflectc *reflectc,
                char buf[],
                const size_t bufsize)
 {
-    struct oa_hash *ht = &cogchef->ht;
+    struct oa_hash *ht = &reflectc->ht;
 
     jsonb_object(jb, buf, bufsize);
     for (size_t i = 0; i < ht->capacity; ++i) {
         struct oa_hash_entry *entry = &ht->buckets[i];
-        struct cogchef *field = entry->value;
+        struct reflectc *field = entry->value;
 
         if (entry->state != OA_HASH_ENTRY_OCCUPIED
             || (field->name.len == 5
@@ -33,17 +33,17 @@ json_stringify(struct jsonb *jb,
         }
 
         switch (field->type) {
-        case COGCHEF_TYPES__char:
+        case REFLECTC_TYPES__char:
             jsonb_string(jb, buf, bufsize, *(char **)field->value,
                          strlen(*(char **)field->value));
             break;
-        case COGCHEF_TYPES__int:
+        case REFLECTC_TYPES__int:
             jsonb_number(jb, buf, bufsize, *(int *)field->value);
             break;
-        case COGCHEF_TYPES__bool:
+        case REFLECTC_TYPES__bool:
             jsonb_bool(jb, buf, bufsize, *(bool *)field->value);
             break;
-        case COGCHEF_TYPES__struct:
+        case REFLECTC_TYPES__struct:
             json_stringify(jb, field, buf, bufsize);
             break;
         default:
@@ -66,23 +66,24 @@ check_json_serializer(void)
 
     struct bar a = { true, 42, "hello world" };
     struct baz baz = { &a, &a, &a, "hello world" };
-    struct cogchef *cogchef =
-        cogchef_from_baz(&baz, COGCHEF_MODES_READONLY, NULL);
+    struct reflectc *reflectc =
+        reflectc_from_baz(&baz, REFLECTC_MODES_READONLY, NULL);
     struct jsonb jb;
 
     jsonb_init(&jb);
 
-    ASSERT_EQ(true,
-              (*(struct bar **)cogchef_get(cogchef, "a", 1)->value)->boolean);
+    ASSERT_EQ(
+        true,
+        (*(struct bar **)reflectc_get(reflectc, "a", 1)->value)->boolean);
     ASSERT_EQ(42,
-              (*(struct bar **)cogchef_get(cogchef, "b", 1)->value)->number);
+              (*(struct bar **)reflectc_get(reflectc, "b", 1)->value)->number);
     ASSERT_STR_EQ(
         "hello world",
-        (*(struct bar **)cogchef_get(cogchef, "c", 1)->value)->string);
+        (*(struct bar **)reflectc_get(reflectc, "c", 1)->value)->string);
     ASSERT_STR_EQ("hello world",
-                  (*(char **)cogchef_get(cogchef, "d", 1)->value));
+                  (*(char **)reflectc_get(reflectc, "d", 1)->value));
 
-    ASSERT_STR_EQ(expected, json_stringify(&jb, cogchef, buf, sizeof(buf)));
+    ASSERT_STR_EQ(expected, json_stringify(&jb, reflectc, buf, sizeof(buf)));
 
     PASS();
 }
@@ -94,13 +95,13 @@ check_loop_through(void)
     char d[] = "hello world";
 
     struct baz baz = { &a, &b, &c, d };
-    struct cogchef *cogchef =
-        cogchef_from_baz(&baz, COGCHEF_MODES_READONLY, NULL);
+    struct reflectc *reflectc =
+        reflectc_from_baz(&baz, REFLECTC_MODES_READONLY, NULL);
 
-    ASSERT_EQ(&a, (*(struct bar **)cogchef_get(cogchef, "a", 1)->value));
-    ASSERT_EQ(&b, (*(struct bar **)cogchef_get(cogchef, "b", 1)->value));
-    ASSERT_EQ(&c, (*(struct bar **)cogchef_get(cogchef, "c", 1)->value));
-    ASSERT_STR_EQ(&d, (*(char **)cogchef_get(cogchef, "d", 1)->value));
+    ASSERT_EQ(&a, (*(struct bar **)reflectc_get(reflectc, "a", 1)->value));
+    ASSERT_EQ(&b, (*(struct bar **)reflectc_get(reflectc, "b", 1)->value));
+    ASSERT_EQ(&c, (*(struct bar **)reflectc_get(reflectc, "c", 1)->value));
+    ASSERT_STR_EQ(&d, (*(char **)reflectc_get(reflectc, "d", 1)->value));
 
     PASS();
 }

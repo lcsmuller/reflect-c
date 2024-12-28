@@ -3,7 +3,7 @@ CC  ?= gcc
 
 API_DIR = test/api
 OUT     = out
-DFLAGS  = -DCOGCHEF_HELPER
+DFLAGS  = -DREFLECTC_HELPER
 
 BUILD = $(MAKE) API_DIR=$(API_DIR) OUT=$(OUT) -C $(TOP)
 EXES  = test
@@ -11,7 +11,7 @@ OUT_H = $(OUT).h
 
 CFLAGS  += -Wall -Wextra -Wpedantic -I$(TOP) -g -std=c99
 LDFLAGS += -L$(TOP)
-LDLIBS  += -lcogchef
+LDLIBS  += -lreflectc
 
 all: submodules $(OUT_H) $(EXES)
 
