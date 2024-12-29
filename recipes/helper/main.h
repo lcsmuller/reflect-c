@@ -28,23 +28,23 @@
 #define REFLECTC_STRUCT_private(_type)                                        \
     static const struct reflectc _type##__root =                              \
         { 0, sizeof(struct _type), { sizeof(#_type) - 1, #_type },            \
-            REFLECTC_TYPES__struct, NULL, NULL, { 0 }, 0 };                   \
+            REFLECTC_TYPES__struct, 0, NULL, NULL, { 0 } };                   \
                                                                               \
     static const struct reflectc _type##__fields[] = {
 #define REFLECTC_FIELD_CUSTOM(_name, _type, _decor, _func, _default_value)    \
         { PTR_DEPTH(_decor), sizeof(_type _decor),                            \
-            { sizeof(#_name) - 1, #_name }, REFLECTC_TYPES__##_type, NULL,    \
-            NULL, { 0 }, 0 },
+            { sizeof(#_name) - 1, #_name }, REFLECTC_TYPES__##_type, 0, NULL, \
+            NULL, { 0 } },
 #define REFLECTC_FIELD_STRUCT_PTR(_name, _type, _decor)                       \
         { PTR_DEPTH(_decor), sizeof(struct _type _decor),                     \
             { sizeof(#_name) - 1, #_name }, REFLECTC_TYPES__struct,           \
-            (reflectc_from_type_t)reflectc_from_##_type, NULL, { 0 }, 0 },
+            0, NULL, (reflectc_from_type_t)reflectc_from_##_type, { 0 } },
 #define REFLECTC_FIELD_PRINTF(_name, _type, _printf_type, _scanf_type)        \
         { 0, sizeof(_type), { sizeof(#_name) - 1, #_name },                   \
-            REFLECTC_TYPES__##_type, NULL, NULL, { 0 }, 0 },
+            REFLECTC_TYPES__##_type, 0, NULL, NULL, { 0 } },
 #define REFLECTC_FIELD_ENUM(_name, _type)                                     \
         { 0, sizeof(enum _type), { sizeof(#_name) - 1, #_name },              \
-            REFLECTC_TYPES__int, NULL, NULL, { 0 }, 0 },
+            REFLECTC_TYPES__int, 0, NULL, NULL, { 0 } },
 #define REFLECTC_STRUCT_END                                                   \
     };
 #define REFLECTC_STRUCT_public REFLECTC_STRUCT_private

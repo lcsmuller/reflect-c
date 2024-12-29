@@ -62,7 +62,7 @@ echo:
 
 clean:
 	@ rm -f $(TEMPFILE) $(OBJS) $(ARLIB)
-	$(MAKE) -f reflect-c.mk $@
+	$(BUILD) $@
 
 purge: clean
 	@ echo "Purging submodules"

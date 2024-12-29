@@ -7,18 +7,15 @@
 
 #include "reflect-c.h"
 
+typedef struct reflectc *(*const reflectc_from_type_t)(void *,
+                                                       enum reflectc_modes,
+                                                       struct reflectc *);
+
 struct reflectc {
-    const unsigned ptr_depth;
-    const size_t size;
-    const struct {
-        const size_t len;
-        const char *const buf;
-    } name;
-    const enum reflectc_types type;
-    reflectc_from_type_t init;
+    REFLECTC_FIELD_ATTRIBUTES;
     void *value;
+    reflectc_from_type_t init;
     struct oa_hash ht;
-    enum reflectc_modes mode;
 };
 
 #endif /* REFLECT_C_INTERNAL_H */

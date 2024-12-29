@@ -19,17 +19,28 @@ enum reflectc_types {
 struct reflectc;
 /**/
 
-typedef struct reflectc *(*const reflectc_from_type_t)(void *,
-                                                       enum reflectc_modes,
-                                                       struct reflectc *);
+struct reflectc_name {
+    const size_t len;
+    const char *const buf;
+};
 
-struct reflectc *reflectc_get(struct reflectc *reflectc,
-                              const char *key,
-                              const size_t key_len);
+#define REFLECTC_FIELD_ATTRIBUTES                                             \
+    const unsigned ptr_depth;                                                 \
+    const size_t size;                                                        \
+    const struct reflectc_name name;                                          \
+    const enum reflectc_types type;                                           \
+    enum reflectc_modes mode
 
-struct reflectc *reflectc_set(struct reflectc *reflectc,
-                              const char *key,
-                              const size_t key_len,
-                              void *value);
+struct reflectc_field {
+    REFLECTC_FIELD_ATTRIBUTES;
+    const void *value;
+};
+
+struct reflectc_field *reflectc_get_field(struct reflectc *reflectc,
+                                          const struct reflectc_name name);
+
+void reflectc_add_field(struct reflectc *reflectc,
+                        struct reflectc_field *field,
+                        void *value);
 
 #endif /* REFLECTC_H */

@@ -134,10 +134,18 @@ check_loop_through(void)
     struct reflectc *reflectc =
         reflectc_from_baz(&baz, REFLECTC_MODES_READONLY, NULL);
 
-    ASSERT_EQ(&a, ((struct bar *)reflectc_get(reflectc, "a", 1)->value));
-    ASSERT_EQ(&b, ((struct bar *)reflectc_get(reflectc, "b", 1)->value));
-    ASSERT_EQ(&c, ((struct bar *)reflectc_get(reflectc, "c", 1)->value));
-    ASSERT_STR_EQ(&d, ((char *)reflectc_get(reflectc, "d", 1)->value));
+    ASSERT_EQ(&a, ((struct bar *)reflectc_get_field(
+                       reflectc, (struct reflectc_name){ 1, "a" })
+                       ->value));
+    ASSERT_EQ(&b, ((struct bar *)reflectc_get_field(
+                       reflectc, (struct reflectc_name){ 1, "b" })
+                       ->value));
+    ASSERT_EQ(&c, ((struct bar *)reflectc_get_field(
+                       reflectc, (struct reflectc_name){ 1, "c" })
+                       ->value));
+    ASSERT_STR_EQ(&d, ((char *)reflectc_get_field(
+                           reflectc, (struct reflectc_name){ 1, "d" })
+                           ->value));
 
     PASS();
 }
