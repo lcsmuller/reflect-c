@@ -1,0 +1,38 @@
+#ifndef REFLECTC_RECIPES_SYMBOLS_H
+#define REFLECTC_RECIPES_SYMBOLS_H
+
+#define REFLECTC_STRUCT(_visibility, _name)                                   \
+    REFLECTC_STRUCT_ ## _visibility(_name)
+#define REFLECTC_LIST(_visibility, _name)                                     \
+    REFLECTC_LIST_ ## _visibility(_name)
+
+#if 0
+The following allows symbols usage without REFLECTC_ prefix
+#endif
+#ifndef REFLECTC_USE_PREFIX
+#   define COND_WRITE REFLECTC_COND_WRITE
+#   define COND_END REFLECTC_COND_END
+
+#   define STRUCT REFLECTC_STRUCT
+#   define FIELD_CUSTOM REFLECTC_FIELD_CUSTOM
+#   define FIELD_PRINTF REFLECTC_FIELD_PRINTF
+#   define FIELD REFLECTC_FIELD
+#   define FIELD_STRUCT_PTR REFLECTC_FIELD_STRUCT_PTR
+#   define FIELD_PTR REFLECTC_FIELD_PTR
+#   define FIELD_ENUM REFLECTC_FIELD_ENUM
+#   define STRUCT_END REFLECTC_STRUCT_END
+
+#   define LIST REFLECTC_LIST
+#   define ELEMENT REFLECTC_ELEMENT
+#   define ELEMENT_STRUCT REFLECTC_ELEMENT_STRUCT
+#   define ELEMENT_PTR REFLECTC_ELEMENT_PTR
+#   define LIST_END REFLECTC_LIST_END
+
+#   define ENUM REFLECTC_ENUM
+#   define ENUM_END REFLECTC_ENUM_END
+#   define ENUMERATOR REFLECTC_ENUMERATOR
+#   define ENUMERATOR_LAST REFLECTC_ENUMERATOR_LAST
+#   define ENUMERATOR_END REFLECTC_ENUMERATOR_END
+#endif /* REFLECTC_USE_PREFIX */
+
+#endif /* REFLECTC_RECIPES_SYMBOLS_H */

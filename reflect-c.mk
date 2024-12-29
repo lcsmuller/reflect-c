@@ -1,23 +1,19 @@
-# Reflect-C executable that runs after CPP expansion
-POST_EXPAND = reflect-c_EXPAND_COMMENTS
+# Expect the following to be pre-defined when invoking this Makefile:
+# - OUT_NO_EXT: Path to the output file without extension
+# - HEADERS: List of header files to be generated
+# - TEMPFILE: Temporary file to be used for header generation
 
-# Input file to be preprocessed
-EXTEND = $(EXTEND_NO_EXT).PRE.h
+# executable that expands comments
+# example: /*#! #define HELLO 1 */  becomes  #define HELLO 1
+EXPAND_COMMENTS = reflect-c_EXPAND_COMMENTS
+
+RECIPES               = reflect-c_RECIPES.PRE.h
+RECIPES_NO_EXT_EXPAND = "$$(echo $(RECIPES) | sed -e 's/\.PRE\.h//')"
+
 # Resulting single-file amalgamations after preprocessing input file
 OUT_C  = $(OUT_NO_EXT).c
 OUT_H  = $(OUT_NO_EXT).h
 OUT_O  = $(OUT_NO_EXT).o
-
-# Dependencies
-SUBMODULES_DIR = submodules
-OA_HASH_DIR    = $(SUBMODULES_DIR)/oa-hash
-OBJS           = $(OA_HASH_DIR)/oa_hash.o
-
-# Resulting library
-LIB_NO_EXT = libreflectc
-ARLIB = $(LIB_NO_EXT).a
-
-ARFLAGS = -cqsv
 
 CFLAGS   ?= -O2
 CFLAGS   += -I. -Wall -Wextra -Wpedantic -std=c89
@@ -30,16 +26,7 @@ HEADER_TAG_EXPAND   = "$$(echo '$<' | sed -e 's/\(.*\)\.PRE.h/\1/' | sed -e 's/\
 # Doxygen file description
 DOXYGEN_DESC_EXPAND = "/**\n * @file $@\n * @author Reflect-C\n * @brief Reflect-C generated code\n */\n"
 
-all: $(ARLIB)
-
-$(ARLIB): $(OBJS) $(OUT_O)
-	@ echo "Creating $@"
-	$(AR) $(ARFLAGS) $@ $^
-
-$(OBJS):
-	@ echo "Building $@"
-	git submodule update --init --recursive
-	$(MAKE) -C $(OA_HASH_DIR)
+all: $(OUT_O)
 
 $(OUT_O): $(OUT_C) $(OUT_H)
 	@ echo "Creating $@"
@@ -49,26 +36,26 @@ $(OUT_O): $(OUT_C) $(OUT_H)
 	@ echo "Creating $@"
 	$(CC) -c $(CFLAGS) $< -o $@
 
-$(POST_EXPAND):
+$(EXPAND_COMMENTS):
 	$(CC) $(CFLAGS) $@.c -o $@
 
-$(OUT_H): $(TEMPFILE) $(EXTEND) $(POST_EXPAND)
+$(OUT_H): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "Generating $@"
 	@ echo "#ifndef $(HEADER_TAG_EXPAND)" > $@
 	@ echo "#define $(HEADER_TAG_EXPAND)\n" >> $@
-	$(CPP) $(CFLAGS) -DREFLECTC_DEFINITIONS -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(EXTEND) | ./$(POST_EXPAND) >> $@
-	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_HEADER -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(EXTEND) | ./$(POST_EXPAND) >> $@
+	$(CPP) $(CFLAGS) -DREFLECTC_DEFINITIONS -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
+	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_HEADER -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	@ echo "\n#endif /* $(HEADER_TAG_EXPAND) */" >> $@
-$(OUT_C): $(TEMPFILE) $(EXTEND) $(POST_EXPAND)
+$(OUT_C): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "Adding forward definitions to $@"
 	@ echo "#include \"$(OUT_H)\"" > $@
-	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_FORWARD -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(EXTEND) | ./$(POST_EXPAND) >> $@
+	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_FORWARD -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	@ echo "Generating $@"	
-	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(EXTEND) >> $@
+	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) >> $@
 
 headers: $(HEADERS)
 
-$(HEADERS): $(EXTEND) $(POST_EXPAND)
+$(HEADERS): $(RECIPES) $(EXPAND_COMMENTS)
 
 .SUFFIXES: .PRE.h .h
 .PRE.h.h:
@@ -76,24 +63,19 @@ $(HEADERS): $(EXTEND) $(POST_EXPAND)
 	@ echo $(DOXYGEN_DESC_EXPAND) > $@
 	@ echo "#ifndef $(HEADER_TAG_EXPAND)" >> $@
 	@ echo "#define $(HEADER_TAG_EXPAND)\n" >> $@
-	$(CPP) $(CFLAGS) -DREFLECTC_DEFINITIONS -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(EXTEND) | ./$(POST_EXPAND) >> $@
-	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_HEADER -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(EXTEND) | ./$(POST_EXPAND) >> $@
+	$(CPP) $(CFLAGS) -DREFLECTC_DEFINITIONS -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
+	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_HEADER -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	@ echo "\n#endif /* $(HEADER_TAG_EXPAND) */" >> $@
 
 echo:
-	@ echo 'EXTEND_NO_EXT: $(EXTEND_NO_EXT)'
+	@ echo 'RECIPES_NO_EXT: $(RECIPES_NO_EXT)'
 	@ echo 'OUT_H: $(OUT_H)'
 	@ echo 'OUT_C: $(OUT_C)'
 	@ echo 'OUT_O: $(OUT_O)'
 	@ echo 'HEADERS: $(HEADERS)'
 
 clean:
-	@ rm -f $(OUT_H) $(OUT_C) $(OUT_O) $(ARLIB)
-	@ rm -f $(HEADERS) $(POST_EXPAND)
-	@ $(MAKE) -C $(OA_HASH_DIR) clean
-
-purge: clean
-	@ echo "Purging submodules"
-	git submodule deinit --all -f
+	@ rm -f $(OUT_H) $(OUT_C) $(OUT_O)
+	@ rm -f $(HEADERS) $(EXPAND_COMMENTS)
 
 .PHONY: headers clean

@@ -2,33 +2,36 @@ TOP  = ..
 CC  ?= gcc
 
 API_DIR = test/api
-OUT     = out
-DFLAGS  = -DREFLECTC_HELPER
+OUT	    = reflect-c_GENERATED
 
-BUILD = $(MAKE) API_DIR=$(API_DIR) OUT=$(OUT) -C $(TOP)
+OUT_O = $(OUT).o
 EXES  = test
-OUT_H = $(OUT).h
 
 CFLAGS  += -Wall -Wextra -Wpedantic -I$(TOP) -g -std=c99
 LDFLAGS += -L$(TOP)
 LDLIBS  += -lreflectc
 
-all: submodules $(OUT_H) $(EXES)
+all: $(EXES)
+
+$(EXES): $(OUT_O) submodules
+	@ echo "Creating $@"
+	$(CC) $(CFLAGS) $(TOP)/$< $@.c -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(OUT_O):
+	@ $(MAKE) API_DIR=$(API_DIR) OUT=$(OUT) -C $(TOP) debug-gen
 
 submodules:
 	@ echo "Updating submodules"
 	git submodule update --init --recursive
 
-$(OUT_H):
-	@ $(BUILD) debug
-
 clean:
 	@ rm -f $(EXES)
-	@ $(BUILD) $@
+	@ $(MAKE) -C $(TOP) $@
 
 purge: clean
 	@ echo "Purging submodules"
 	git submodule deinit --all -f
+	@ $(MAKE) -C $(TOP) $@
 
-.PHONY: clean submodules
+.PHONY: all submodules clean purge
 .NOTPARALLEL: all

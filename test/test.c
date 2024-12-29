@@ -7,7 +7,10 @@
 #include "jsmn-find/test/jsmn_1.1.0.h"
 #include "jsmn-find/jsmn-find.h"
 
-#include "out.h"
+#include "reflect-c.h"
+#include "reflect-c_internal.h"
+
+#include "reflect-c_GENERATED.h"
 
 static void
 json_stringify(struct jsonb *jb,

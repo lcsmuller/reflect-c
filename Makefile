@@ -1,41 +1,71 @@
-# User modifiable variables
-EXTEND  = reflect-c_MAIN_INCLUDES.PRE.h
+SUBMODULES_DIR  = submodules
+OA_HASH_DIR	    = $(SUBMODULES_DIR)/oa-hash
+
+# Dependencies
+OBJS_SUBMODULES = $(OA_HASH_DIR)/oa_hash.o
+OBJS_REFLECTC   = reflect-c.o
+OBJS            = $(OBJS_REFLECTC) $(OBJS_SUBMODULES)
+
+# Resulting library
+LIB_NO_EXT = libreflectc
+ARLIB = $(LIB_NO_EXT).a
+
+ARFLAGS = -cqsv
+
+CFLAGS   ?= -O2
+CFLAGS   += -I. -Wall -Wextra -Wpedantic -std=c89
+
 API_DIR = api
-OUT     = out
+OUT     = reflect-c_GENERATED
 DFLAGS  = -DREFLECTC_HELPER -DREFLECTC_STRUCT_INIT
 
-# Remove suffix from EXTEND
-EXTEND_NO_EXT_EXPAND = "$$(echo $(EXTEND) | sed -e 's/\.PRE\.h//')"
 # Convert %.PRE.h -> %.h
 HEADERS_EXPAND       = "$$(echo $(API_DIR)/*.PRE.h | sed -e 's/\.PRE\.h/.h/g')"
 # Join all API_DIR files together
-TEMPFILE        = reflect-c_AMALGAMATION.PRE.h
+TEMPFILE        = reflect-c_GENERATED.PRE.h
 TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.PRE.h); for header in $$headers; do echo "\#include \"$$header\"" >> $(TEMPFILE); done
+# Build reflect-c.mk with the correct variables
+BUILD = $(MAKE) OUT_NO_EXT=$(OUT) DFLAGS="$(DFLAGS)" -f reflect-c.mk
 
-BUILD = $(MAKE) EXTEND_NO_EXT=$(EXTEND_NO_EXT_EXPAND) OUT_NO_EXT=$(OUT) DFLAGS="$(DFLAGS)" -f reflect-c.mk
+all: $(ARLIB)
 
-all:
+$(ARLIB): $(OBJS)
+	@ echo "Creating $@"
+	$(AR) $(ARFLAGS) $@ $^
+
+$(OBJS_REFLECTC): $(OBJS_SUBMODULES)
+
+$(OBJS_SUBMODULES):
+	@ echo "Building $@"
+	git submodule update --init --recursive
+	$(MAKE) -C $(OA_HASH_DIR)
+
+gen: all
 	@ touch $(TEMPFILE)  && $(TEMPFILE_EXPAND)
 	$(BUILD) TEMPFILE=$(TEMPFILE) || rm -f $(TEMPFILE)
 	@ rm -f $(TEMPFILE)
 
 debug:
 	@ echo "Building on debug mode"
-	CFLAGS="-g" $(MAKE)
+	CFLAGS="-g" $(MAKE) 
+
+debug-gen:
+	@ echo "Building on debug mode"
+	CFLAGS="-g" $(MAKE) gen
 
 headers:
 	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
 echo:
-	@ echo 'EXTEND: $(EXTEND)'
 	@ echo 'API_DIR: $(API_DIR)'
 	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
 clean:
-	@ rm -f $(TEMPFILE)
+	@ rm -f $(TEMPFILE) $(OBJS) $(ARLIB)
 	$(MAKE) -f reflect-c.mk $@
 
 purge: clean
-	$(MAKE) -f reflect-c.mk $@
+	@ echo "Purging submodules"
+	git submodule deinit --all -f
 
-.PHONY: headers echo clean
+.PHONY: all gen debug debug-gen headers echo clean purge

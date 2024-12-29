@@ -1,38 +1,35 @@
 #ifndef REFLECTC_H
 #define REFLECTC_H
 
-#define REFLECTC_STRUCT(_visibility, _name)                                   \
-    REFLECTC_STRUCT_ ## _visibility(_name)
-#define REFLECTC_LIST(_visibility, _name)                                     \
-    REFLECTC_LIST_ ## _visibility(_name)
+enum reflectc_modes { REFLECTC_MODES_WRITE, REFLECTC_MODES_READONLY };
 
-#if 0
-The following allows symbols usage without REFLECTC_ prefix
-#endif
-#ifndef REFLECTC_USE_PREFIX
-#   define COND_WRITE REFLECTC_COND_WRITE
-#   define COND_END REFLECTC_COND_END
+enum reflectc_types {
+    REFLECTC_TYPES__char,
+    REFLECTC_TYPES__short,
+    REFLECTC_TYPES__int,
+    REFLECTC_TYPES__long,
+    REFLECTC_TYPES__float,
+    REFLECTC_TYPES__double,
+    REFLECTC_TYPES__bool,
+    REFLECTC_TYPES__struct,
+    REFLECTC_TYPES__EXTEND
+};
 
-#   define STRUCT REFLECTC_STRUCT
-#   define FIELD_CUSTOM REFLECTC_FIELD_CUSTOM
-#   define FIELD_PRINTF REFLECTC_FIELD_PRINTF
-#   define FIELD REFLECTC_FIELD
-#   define FIELD_STRUCT_PTR REFLECTC_FIELD_STRUCT_PTR
-#   define FIELD_PTR REFLECTC_FIELD_PTR
-#   define FIELD_ENUM REFLECTC_FIELD_ENUM
-#   define STRUCT_END REFLECTC_STRUCT_END
+/* forward definition */
+struct reflectc;
+/**/
 
-#   define LIST REFLECTC_LIST
-#   define ELEMENT REFLECTC_ELEMENT
-#   define ELEMENT_STRUCT REFLECTC_ELEMENT_STRUCT
-#   define ELEMENT_PTR REFLECTC_ELEMENT_PTR
-#   define LIST_END REFLECTC_LIST_END
+typedef struct reflectc *(*const reflectc_from_type_t)(void *,
+                                                       enum reflectc_modes,
+                                                       struct reflectc *);
 
-#   define ENUM REFLECTC_ENUM
-#   define ENUM_END REFLECTC_ENUM_END
-#   define ENUMERATOR REFLECTC_ENUMERATOR
-#   define ENUMERATOR_LAST REFLECTC_ENUMERATOR_LAST
-#   define ENUMERATOR_END REFLECTC_ENUMERATOR_END
-#endif /* REFLECTC_USE_PREFIX */
+struct reflectc *reflectc_get(struct reflectc *reflectc,
+                              const char *key,
+                              const size_t key_len);
+
+struct reflectc *reflectc_set(struct reflectc *reflectc,
+                              const char *key,
+                              const size_t key_len,
+                              void *value);
 
 #endif /* REFLECTC_H */

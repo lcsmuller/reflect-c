@@ -5,6 +5,7 @@
 
 /*#! #include <stddef.h> */
 /*#! #include <stdbool.h> */
+/*#! #include "reflect-c.h" */
 
 #define REFLECTC_STRUCT_private(_type)                                        \
     struct _type {

@@ -8,7 +8,15 @@
 !recipes
 !recipes/*
 !recipes/**/*
-!reflect-c*.*
+!reflect-c_EXPAND_COMMENTS.c
+!reflect-c_EXPAND.h
+!reflect-c_RECIPES_SYMBOLS.h
+!reflect-c_RECIPES.h
+!reflect-c_RECIPES.PRE.h
+!reflect-c.c
+!reflect-c.h
+!reflect-c_internal.h
+!reflect-c.mk
 !Makefile
 !test
 !submodules
