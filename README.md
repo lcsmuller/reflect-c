@@ -66,11 +66,11 @@ struct reflectc *r = reflectc_from_employee(&e, REFLECTC_MODES_READONLY, NULL);
 
 // Access fields including nested structs
 int *id = reflectc_get(r, "id", strlen("id"))->value;
-char *dept = *(char**)reflectc_get(r, "department", strlen("department"))->value;
+char *dept = reflectc_get(r, "department", strlen("department"))->value;
 
 // Access nested person struct fields
-struct reflectc *person_info = *(struct reflectc**)reflectc_get(r, "info", strlen("info"))->value;
-char *name = *(char**)reflectc_get(person_info, "name", strlen("name"))->value;
+struct reflectc *person_info = reflectc_get(r, "info", strlen("info"))->value;
+char *name = reflectc_get(person_info, "name", strlen("name"))->value;
 ```
 
 The reflection code is generated at compile time with zero runtime overhead. The generated structures can be used normally or accessed dynamically through the reflection API.

@@ -6,3 +6,6 @@
 	path = submodules/oa-hash
 	url = https://github.com/lcsmuller/oa-hash
 	branch = main
+[submodule "test/jsmn-find"]
+	path = test/jsmn-find
+	url = https://github.com/lcsmuller/jsmn-find.git
