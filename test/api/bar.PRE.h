@@ -3,18 +3,18 @@
 #endif
 
 STRUCT(private, bar)
-    FIELD(boolean, bool, false)
-    FIELD(number, int, 0)
-    FIELD_PTR(string, char, *)
+    FIELD(boolean, bool, BLANK, false)
+    FIELD(number, int, BLANK, 0)
+    FIELD(string, char, *, NULL)
 STRUCT_END
 
 STRUCT(public, baz)
-    FIELD_STRUCT_PTR(a, bar, *)
-    FIELD_STRUCT_PTR(b, bar, *)
-    FIELD_STRUCT_PTR(c, bar, *)
-    FIELD_PTR(d, char, *)
+    FIELD_STRUCT(a, bar, *, NULL)
+    FIELD_STRUCT(b, bar, *, NULL)
+    FIELD_STRUCT(c, bar, *, NULL)
+    FIELD(d, char, *, NULL)
 STRUCT_END
 
 LIST(public, bazz)
-    ELEMENT_PTR(char, *)
+    ELEMENT(char, *)
 LIST_END

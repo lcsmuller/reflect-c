@@ -80,7 +80,7 @@ check_json_serializer(void)
     struct bar a = { true, 42, "hello world" };
     struct baz baz = { &a, &a, &a, "hello world" };
     struct reflectc *reflectc =
-        reflectc_from_baz(&baz, REFLECTC_MODES_READONLY, NULL);
+        reflectc_from_baz(&baz, 1, REFLECTC_MODES_READONLY, NULL);
     char json[sizeof(expected)] = { 0 };
     struct jsonb jb;
     jsonb_init(&jb);
@@ -132,7 +132,7 @@ check_loop_through(void)
 
     struct baz baz = { &a, &b, &c, d };
     struct reflectc *reflectc =
-        reflectc_from_baz(&baz, REFLECTC_MODES_READONLY, NULL);
+        reflectc_from_baz(&baz, 1, REFLECTC_MODES_READONLY, NULL);
 
     ASSERT_EQ(&a, ((struct bar *)reflectc_get_field(
                        reflectc, (struct reflectc_name){ 1, "a" })
