@@ -1,21 +1,14 @@
 #ifndef REFLECT_C_INTERNAL_H
 #define REFLECT_C_INTERNAL_H
 
-#include <stddef.h>
-
-#include "submodules/oa-hash/oa_hash.h"
-
 #include "reflect-c.h"
 
-typedef struct reflectc *(*const reflectc_from_type_t)(void *,
-                                                       enum reflectc_modes,
-                                                       struct reflectc *);
-
-struct reflectc {
+struct reflectc_mut {
+    struct oa_hash ht;
     REFLECTC_FIELD_ATTRIBUTES;
     void *value;
-    reflectc_from_type_t init;
-    struct oa_hash ht;
 };
+
+void *reflectc_derefer_max(const struct reflectc *field);
 
 #endif /* REFLECT_C_INTERNAL_H */

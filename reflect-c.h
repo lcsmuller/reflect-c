@@ -1,46 +1,46 @@
 #ifndef REFLECTC_H
 #define REFLECTC_H
 
-enum reflectc_modes { REFLECTC_MODES_WRITE, REFLECTC_MODES_READONLY };
+#define OA_HASH_HEADER
+#include "core/oa_hash.h"
 
 enum reflectc_types {
+    REFLECTC_TYPES__UNKNOWN,
+    REFLECTC_TYPES__bool,
     REFLECTC_TYPES__char,
     REFLECTC_TYPES__short,
     REFLECTC_TYPES__int,
     REFLECTC_TYPES__long,
     REFLECTC_TYPES__float,
     REFLECTC_TYPES__double,
-    REFLECTC_TYPES__bool,
     REFLECTC_TYPES__struct,
+    REFLECTC_TYPES__union,
+    REFLECTC_TYPES__enum,
     REFLECTC_TYPES__EXTEND
 };
 
-/* forward definition */
-struct reflectc;
-/**/
-
-struct reflectc_name {
-    const size_t len;
-    const char *const buf;
-};
-
 #define REFLECTC_FIELD_ATTRIBUTES                                             \
-    const unsigned ptr_depth;                                                 \
     const size_t size;                                                        \
-    const struct reflectc_name name;                                          \
-    const enum reflectc_types type;                                           \
-    enum reflectc_modes mode
+    const struct {                                                            \
+        const char *const buf;                                                \
+        const size_t len;                                                     \
+    } qualifier, decorator, name, dimensions;                                 \
+    const enum reflectc_types type
 
-struct reflectc_field {
+struct reflectc {
+    OA_HASH_ATTRS(const);
     REFLECTC_FIELD_ATTRIBUTES;
     const void *value;
 };
 
-struct reflectc_field *reflectc_get_field(struct reflectc *reflectc,
-                                          const struct reflectc_name name);
+struct reflectc *reflectc_get_field(struct reflectc *root,
+                                    const char *const name,
+                                    const size_t len);
 
-void reflectc_add_field(struct reflectc *reflectc,
-                        struct reflectc_field *field,
-                        void *value);
+struct reflectc *reflectc_add_field(struct reflectc *root,
+                                    struct reflectc *field,
+                                    void *value);
+
+unsigned reflectc_get_pointer_depth(const struct reflectc *field);
 
 #endif /* REFLECTC_H */

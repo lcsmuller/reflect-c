@@ -1,20 +1,36 @@
 #ifdef REFLECTC_DEFINITIONS
-/*#! #define HELLO 1 */
+/*#!
+#include <stddef.h>
+#include <stdbool.h>
+
+#define HELLO 1
+*/
 #endif
 
-STRUCT(private, bar)
-    FIELD(boolean, bool, BLANK, false)
-    FIELD(number, int, BLANK, 0)
-    FIELD(string, char, *, NULL)
-STRUCT_END
+PRIVATE(struct, bar, 3, (
+        (_, _, bool, _, boolean, _),
+        (_, _, int, _, number, _),
+        (_, _, char,  *, string, _)
+    )
+)
 
-STRUCT(public, baz)
-    FIELD_STRUCT(a, bar, *, NULL)
-    FIELD_STRUCT(b, bar, *, NULL)
-    FIELD_STRUCT(c, bar, *, NULL)
-    FIELD(d, char, *, NULL)
-STRUCT_END
+PUBLIC(struct, baz, 4, (
+        (_, struct, bar, *, a, _),
+        (_, struct, bar, *, b, _),
+        (_, struct, bar,         * *       *, c, _),
+        (_, _, char, *, d, _)
+    )
+)
 
-LIST(public, bazz)
-    ELEMENT(char, *)
-LIST_END
+PUBLIC(union, barbaz, 2, (
+        (_, struct, bar, _, bar, _),
+        (_, struct, baz, _, baz, _)
+    )
+)
+
+PRIVATE(enum, levels, 3, (
+        (LEVELS_ONE, =, 1),
+        (LEVELS_TWO, _, _),
+        (LEVELS_THREE, _, _)
+    )
+)

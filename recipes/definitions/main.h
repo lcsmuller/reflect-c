@@ -1,59 +1,41 @@
-#define DEFINITIONS
-#define REFLECTC_RETURN(_type) void
-
 #ifdef REFLECTC_DEFINITIONS
 
-/*#! #include <stddef.h> */
-/*#! #include <stdbool.h> */
-/*#! #include "reflect-c.h" */
+/*#!
+#include "reflect-c.h"
 
-#define REFLECTC_STRUCT_private(_type)                                        \
-    struct _type {
-#define REFLECTC_FIELD(_name, _type, _default_value)                          \
-        _type _name;
-#define REFLECTC_FIELD_STRUCT_PTR(_name, _type, _decor)                       \
-        struct _type _decor _name;
-#define REFLECTC_FIELD_PTR(_name, _type, _decor)                              \
-        _type _decor _name;
-#define REFLECTC_FIELD_CUSTOM(_name, __type, _decor, _func, _default_value)   \
-        _type _decor _name;
-#define REFLECTC_FIELD_PRINTF(_name, _type, printf_type, _scanf_type)         \
-        _type _name;
-#define REFLECTC_FIELD_ENUM(_name, _type)                                     \
-        enum _type _name;
-#define REFLECTC_STRUCT_END                                                   \
+#define _
+*/
+
+#define _pick_container(_container, _type)                                    \
+    _container _type {
+#define _pick_field(                                                          \
+        _qualifier, _container, _type, _decorator, _name, _dimensions)        \
+        _qualifier _container _type _decorator _name _dimensions;
+#define _pick_container_end                                                   \
     };
 
-#define REFLECTC_LIST_private(_type)                                          \
-    struct _type {                                                            \
-        int size;
-#define REFLECTC_ELEMENT(_type)                                               \
-        _type *array;
-#define REFLECTC_ELEMENT_STRUCT(_type)                                        \
-        struct _type *array;
-#define REFLECTC_ELEMENT_PTR(_type, _decor)                                   \
-        _type * _decor array;
-#define REFLECTC_LIST_END                                                     \
-        /** @private */                                                       \
-        int realsize;                                                         \
-    };
-#define REFLECTC_LIST_public REFLECTC_LIST_private
 
+#define REFLECTC_PUBLIC 1
+#define REFLECTC_PRIVATE 1
+#define REFLECTC_STRUCT(_type) _pick_container(struct, _type)
+#define REFLECTC_UNION(_type) _pick_container(union, _type)
+#define RCF _pick_field
+#define REFLECTC_STRUCT_END _pick_container_end
+#define REFLECTC_UNION_END _pick_container_end
 #define REFLECTC_ENUM(_name)                                                  \
-    enum _name {
-#define REFLECTC_ENUMERATOR(_enumerator, _value)                              \
-        _enumerator _value,
-#define REFLECTC_ENUMERATOR_LAST(_enumerator, _value)                         \
-        _enumerator _value
+    enum _name {                                                              \
+        __##_name ##_##INITIAL##__= -1
+#define RCE(_enumerator, _eq, _value)                                         \
+        , _enumerator _eq _value
 #define REFLECTC_ENUM_END                                                     \
     };
-
-#define REFLECTC_STRUCT_public REFLECTC_STRUCT_private
-#define REFLECTC_LIST_public REFLECTC_LIST_private
-
 #include "reflect-c_EXPAND.h"
+#undef _pick_container
+#undef _pick_field
+#undef _pick_container_end
+
+/*#!
+#undef _
+*/
 
 #endif /* REFLECTC_DEFINITIONS */
-
-#undef DEFINITIONS
-#undef REFLECTC_RETURN

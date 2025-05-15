@@ -1,80 +1,113 @@
 # Reflect-C
 
-A C89 library that adds reflection capabilities to C structs through code generation.
+A library that adds reflection capabilities to C structs through code generation.
 
 ## Features
 - Zero runtime overhead - all metadata generated at compile time
 - Struct field access by name
-- No dynamic memory allocation during serialization
-- Support for nested structs and arrays
+- JSON serialization support
+- Support for nested structs, unions, and enums
 - Field type validation
 - C89 compatible
 - MIT licensed
 
 ## Basic Usage
 
-1. Create a `.PRE.h` file (e.g. `api/person.PRE.h`) with your struct definitions:
+1. Create a `.PRE.h` file (e.g. `api/bar.PRE.h`) with your struct definitions:
 
 ```c
-// File: api/person.PRE.h
-STRUCT(public, person)
-    FIELD(name, char, *)       // String field
-    FIELD(age, int, 0)         // Integer field 
-    FIELD(active, bool, false) // Boolean field
-STRUCT_END
+#ifdef REFLECTC_DEFINITIONS
+/*#!
+#include <stddef.h>
+#include <stdbool.h>
+*/
+#endif
+
+PRIVATE(struct, bar, 3, (
+        (_, _, bool, _, boolean, _),
+        (_, _, int, _, number, _),
+        (_, _, char, *, string, _)
+    )
+)
+
+PUBLIC(struct, baz, 4, (
+        (_, struct, bar, *, a, _),
+        (_, struct, bar, *, b, _),
+        (_, struct, bar, ***, c, _),
+        (_, _, char, *, d, _)
+    )
+)
 ```
 
-```c
-// File: api/employee.PRE.h  
-STRUCT(public, employee)
-    FIELD_STRUCT_PTR(info, person, *)  // Nested person struct
-    FIELD(id, int, 0)                  // Employee ID
-    FIELD_PTR(department, char, *)     // Department name
-    FIELD(salary, float, 0.0)          // Salary
-STRUCT_END
-```
-
-2. Generate the reflection code:
-
-```bash
-# API_DIR points to folder containing .PRE.h files
-# OUT specifies output filename (will create .c and .h)
-make API_DIR=api OUT=generated_code
-```
+2. Generate the reflection code using your build system to process the `.PRE.h` files.
 
 3. Use the generated code:
 
 ```c
-#include "generated_code.h"
+#include "reflect-c_GENERATED.h"
 
 // Create and initialize structs
-struct person p = {
-    .name = "John",
-    .age = 25,
-    .active = true
-};
+struct bar a = { true, 42, "hello world" };
+struct bar *aa = &a;
+struct bar **aaa = &aa;
+struct baz baz = { &a, &a, &aaa, "hello world" };
 
-struct employee e = {
-    .info = &p,
-    .id = 12345,
-    .department = "Engineering",
-    .salary = 75000.0
-};
+// Create reflection wrapper
+struct reflectc *wrapped_baz = reflectc_from_baz(&baz, 1, NULL);
 
-// Access fields by name at runtime
-struct reflectc *r = reflectc_from_employee(&e, REFLECTC_MODES_READONLY, NULL);
+// Access fields by name
+char *str_d = *(char **)reflectc_get_field(wrapped_baz, "d", 1)->value;
+struct bar *bar_a = *(struct bar **)reflectc_get_field(wrapped_baz, "a", 1)->value;
 
-// Access fields including nested structs
-int *id = reflectc_get(r, "id", strlen("id"))->value;
-char *dept = reflectc_get(r, "department", strlen("department"))->value;
-
-// Access nested person struct fields
-struct reflectc *person_info = reflectc_get(r, "info", strlen("info"))->value;
-char *name = reflectc_get(person_info, "name", strlen("name"))->value;
+// Access nested fields
+struct reflectc *field_a = reflectc_get_field(wrapped_baz, "a", 1);
+int number = *(int *)reflectc_get_field(field_a, "number", 6)->value;
 ```
 
-The reflection code is generated at compile time with zero runtime overhead. The generated structures can be used normally or accessed dynamically through the reflection API.
+## Example JSON Serialization
+
+Reflect-C reflection capabilities make it possible to create a generic JSON serializer function in plain C:
+
+```c
+#include "json-build.h"
+
+// Serialize a reflected struct to JSON
+void json_stringify(struct jsonb *jb, struct reflectc *field, char buf[], const size_t bufsize) {
+    switch (field->type) {
+    case REFLECTC_TYPES__char:
+        jsonb_string(jb, buf, bufsize, *(char **)field->value, strlen(*(char **)field->value));
+        break;
+    case REFLECTC_TYPES__int:
+        jsonb_number(jb, buf, bufsize, *(int *)field->value);
+        break;
+    case REFLECTC_TYPES__bool:
+        jsonb_bool(jb, buf, bufsize, *(bool *)field->value);
+        break;
+    case REFLECTC_TYPES__struct: {
+        jsonb_object(jb, buf, bufsize);
+        for (size_t i = 0; i < field->capacity; ++i) {
+            const struct oa_hash_entry *entry = &field->buckets[i];
+            if (entry->state != OA_HASH_ENTRY_OCCUPIED) continue;
+
+            struct reflectc *field = entry->value;
+            jsonb_key(jb, buf, bufsize, field->name.buf, field->name.len);
+            json_stringify(jb, field, buf, bufsize);
+        }
+        jsonb_object_pop(jb, buf, bufsize);
+    } break;
+    // Add other types as needed
+    }
+}
+```
+
+## API Reference
+
+- `reflectc_from_X()` - Creates a reflection wrapper for struct X
+- `reflectc_get_field()` - Gets a field by name from a reflected struct
+- `reflectc_add_field()` - Adds a field to a reflected struct
+- `reflectc_get_pointer_depth()` - Gets the pointer indirection level of a field
+- `reflectc_derefer_max()` - Dereferences a pointer field to its maximum depth
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.

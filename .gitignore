@@ -15,6 +15,7 @@
 !reflect-c_RECIPES.PRE.h
 !reflect-c.c
 !reflect-c.h
+!reflect-c_internal.c
 !reflect-c_internal.h
 !reflect-c.mk
 !Makefile
@@ -22,3 +23,6 @@
 !submodules
 !docs
 !docs/*
+!core
+!core/*.c
+!core/*.h

@@ -1,9 +1,15 @@
 #ifdef REFLECTC_DEFINITIONS
-/*#! #define BYE 2 */
+/*#!
+#include <stddef.h>
+#include <stdbool.h>
+
+#define BYE 2
+*/
 #endif
 
-STRUCT(public, foo)
-    FIELD(boolean, bool, BLANK, false)
-    FIELD(number, int, BLANK, 0)
-    FIELD(string, char, *, NULL)
-STRUCT_END
+PUBLIC(struct, foo, 3, (
+        (_, _, bool, _, boolean, _),
+        (_, _, int, _, number, _),
+        (_, _, char, *, string, _)
+    )
+)

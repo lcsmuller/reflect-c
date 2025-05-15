@@ -1,10 +1,8 @@
-SUBMODULES_DIR  = submodules
-OA_HASH_DIR	    = $(SUBMODULES_DIR)/oa-hash
-
 # Dependencies
-OBJS_SUBMODULES = $(OA_HASH_DIR)/oa_hash.o
-OBJS_REFLECTC   = reflect-c.o
-OBJS            = $(OBJS_REFLECTC) $(OBJS_SUBMODULES)
+CORE_DIR = core
+
+CORE_OBJS = $(CORE_DIR)/oa_hash.o
+OBJS      = reflect-c.o reflect-c_internal.o $(CORE_OBJS)
 
 # Resulting library
 LIB_NO_EXT = libreflectc
@@ -17,7 +15,7 @@ CFLAGS   += -I. -Wall -Wextra -Wpedantic -std=c89
 
 API_DIR = api
 OUT     = reflect-c_GENERATED
-DFLAGS  = -DREFLECTC_HELPER -DREFLECTC_STRUCT_INIT
+DFLAGS  = -DREFLECTC_WRAPPER
 
 # Convert %.PRE.h -> %.h
 HEADERS_EXPAND       = "$$(echo $(API_DIR)/*.PRE.h | sed -e 's/\.PRE\.h/.h/g')"
@@ -32,13 +30,6 @@ all: $(ARLIB)
 $(ARLIB): $(OBJS)
 	@ echo "Creating $@"
 	$(AR) $(ARFLAGS) $@ $^
-
-$(OBJS_REFLECTC): $(OBJS_SUBMODULES)
-
-$(OBJS_SUBMODULES):
-	@ echo "Building $@"
-	git submodule update --init --recursive
-	$(MAKE) -C $(OA_HASH_DIR)
 
 gen: all
 	@ touch $(TEMPFILE)  && $(TEMPFILE_EXPAND)
@@ -65,7 +56,5 @@ clean:
 	$(BUILD) $@
 
 purge: clean
-	@ echo "Purging submodules"
-	git submodule deinit --all -f
 
 .PHONY: all gen debug debug-gen headers echo clean purge
