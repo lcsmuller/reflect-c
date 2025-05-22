@@ -19,18 +19,16 @@ enum reflectc_types {
     REFLECTC_TYPES__EXTEND
 };
 
-#define REFLECTC_FIELD_ATTRIBUTES                                             \
-    const size_t size;                                                        \
-    const struct {                                                            \
-        const char *const buf;                                                \
-        const size_t len;                                                     \
-    } qualifier, decorator, name, dimensions;                                 \
-    const enum reflectc_types type
-
 struct reflectc {
-    OA_HASH_ATTRS(const);
-    REFLECTC_FIELD_ATTRIBUTES;
-    const void *value;
+    struct oa_hash ht;
+    const size_t size;
+    const struct {
+        const char *const buf;
+        const size_t len;
+    } qualifier, decorator, name, dimensions;
+    const enum reflectc_types type;
+    size_t length;
+    void *value;
 };
 
 struct reflectc *reflectc_get_field(struct reflectc *root,

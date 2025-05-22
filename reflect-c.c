@@ -8,7 +8,7 @@ reflectc_get_field(struct reflectc *root,
                    const char *const name,
                    const size_t len)
 {
-    return oa_hash_get((struct oa_hash *)root, name, len);
+    return oa_hash_get(&root->ht, name, len);
 }
 
 struct reflectc *
@@ -16,9 +16,13 @@ reflectc_add_field(struct reflectc *root, struct reflectc *field, void *value)
 {
     struct reflectc *new_field = malloc(sizeof *new_field);
     memcpy(new_field, field, sizeof *field);
-    if (value && !field->value) new_field->value = value;
-    return oa_hash_set((struct oa_hash *)root, new_field->name.buf,
-                       new_field->name.len, new_field);
+
+    if (value && !field->value) {
+        new_field->value = value;
+    }
+
+    return oa_hash_set(&root->ht, new_field->name.buf, new_field->name.len,
+                       new_field);
 }
 
 unsigned

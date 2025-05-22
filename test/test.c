@@ -20,7 +20,7 @@ json_stringify(struct jsonb *jb,
                char buf[],
                const size_t bufsize)
 {
-    if (field->decorator.len && *(char **)field->value == NULL) {
+    if (field->decorator.len && *(void **)field->value == NULL) {
         jsonb_null(jb, buf, bufsize);
         return;
     }
@@ -41,8 +41,8 @@ json_stringify(struct jsonb *jb,
         break;
     case REFLECTC_TYPES__struct: {
         jsonb_object(jb, buf, bufsize);
-        for (size_t i = 0; i < field->capacity; ++i) {
-            const struct oa_hash_entry *entry = &field->buckets[i];
+        for (size_t i = 0; i < field->ht.capacity; ++i) {
+            const struct oa_hash_entry *entry = &field->ht.buckets[i];
             if (entry->state != OA_HASH_ENTRY_OCCUPIED) continue;
 
             struct reflectc *field = entry->value;
@@ -78,7 +78,7 @@ check_json_serializer(void)
     // Generate the JSON string
     struct bar a = { true, 42, "hello world" }, *aa = &a, **aaa = &aa;
     struct baz baz = { &a, &a, &aaa, "hello world" };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, 1, NULL);
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
     struct jsonb jb;
     jsonb_init(&jb);
     json_stringify(&jb, wrapped_baz, got_json, sizeof(got_json));
@@ -131,7 +131,7 @@ check_loop_through(void)
     char d[] = "hello world";
 
     struct baz baz = { &a, &b, &ccc, d };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, 1, NULL);
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
 
     ASSERT_MEM_EQ(&d,
                   (*(char **)reflectc_get_field(wrapped_baz, "d", 1)->value),
@@ -147,10 +147,23 @@ check_loop_through(void)
     PASS();
 }
 
+TEST
+check_array(void)
+{
+    struct foo foo = { true, { 42, 43, 44, 45 }, "hello world" };
+    struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
+
+    ASSERT_EQ(
+        42, (*(int **)reflectc_get_field(wrapped_foo, "number", 5)->value)[0]);
+
+    PASS();
+}
+
 SUITE(wrapper)
 {
     RUN_TEST(check_loop_through);
     RUN_TEST(check_json_serializer);
+    RUN_TEST(check_array);
 }
 
 GREATEST_MAIN_DEFS();
