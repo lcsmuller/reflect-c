@@ -2,7 +2,7 @@
 CORE_DIR = core
 
 CORE_OBJS = $(CORE_DIR)/oa_hash.o
-OBJS      = reflect-c.o reflect-c_internal.o $(CORE_OBJS)
+OBJS      = reflect-c.o $(CORE_OBJS)
 
 # Resulting library
 LIB_NO_EXT = libreflectc

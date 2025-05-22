@@ -19,28 +19,37 @@ enum reflectc_types {
     REFLECTC_TYPES__EXTEND
 };
 
-#define REFLECTC_FIELD_ATTRIBUTES                                             \
-    const size_t size;                                                        \
-    const struct {                                                            \
-        const char *const buf;                                                \
-        const size_t len;                                                     \
-    } qualifier, decorator, name, dimensions;                                 \
-    const enum reflectc_types type
-
 struct reflectc {
-    OA_HASH_ATTRS(const);
-    REFLECTC_FIELD_ATTRIBUTES;
-    const void *value;
+    struct oa_hash ht;
+    const size_t size;
+    const struct {
+        const char *const buf;
+        const size_t len;
+    } qualifier, decorator, name, dimensions;
+    const enum reflectc_types type;
+    size_t length;
+    void *ptr_value;
 };
 
-struct reflectc *reflectc_get_field(struct reflectc *root,
-                                    const char *const name,
-                                    const size_t len);
+size_t reflectc_length(const struct reflectc *field);
 
-struct reflectc *reflectc_add_field(struct reflectc *root,
-                                    struct reflectc *field,
-                                    void *value);
+void *_reflectc_get(struct reflectc *root,
+                    const char *const name,
+                    const size_t len);
+#define reflectc_get(_type) (_type) _reflectc_get
+
+void *reflectc_append(struct reflectc *root,
+                      struct reflectc *field,
+                      void *value);
 
 unsigned reflectc_get_pointer_depth(const struct reflectc *field);
+
+#if 0
+#define NOCONTAINER_struct
+#define NOCONTAINER_union
+#define NOCONTAINER_ENUM
+#define REFLECTC_IDENTIFIER(_type) NOCONTAINER_##_type##_TEST2
+REFLECTC_IDENTIFIER(struct abcdef)
+#endif
 
 #endif /* REFLECTC_H */
