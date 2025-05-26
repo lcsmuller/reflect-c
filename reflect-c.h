@@ -1,8 +1,7 @@
 #ifndef REFLECTC_H
 #define REFLECTC_H
 
-#define OA_HASH_HEADER
-#include "core/oa_hash.h"
+#include <stddef.h>
 
 enum reflectc_types {
     REFLECTC_TYPES__UNKNOWN,
@@ -20,7 +19,6 @@ enum reflectc_types {
 };
 
 struct reflectc {
-    struct oa_hash ht;
     const size_t size;
     const struct {
         const char *const buf;
@@ -29,27 +27,29 @@ struct reflectc {
     const enum reflectc_types type;
     size_t length;
     void *ptr_value;
+    struct {
+        size_t len;
+        const struct reflectc *array;
+    } fields;
 };
 
 size_t reflectc_length(const struct reflectc *field);
 
 void *_reflectc_get(struct reflectc *root,
                     const char *const name,
-                    const size_t len);
-#define reflectc_get(_type) (_type) _reflectc_get
+                    const size_t len,
+                    const int index);
+#define _reflectc_get_unoptmized(_root, _name, _len)                          \
+    _reflectc_get(_root, _name, _len, 0)
+#define reflectc_get(_type) (_type) _reflectc_get_unoptmized
 
-void *reflectc_append(struct reflectc *root,
-                      struct reflectc *field,
-                      void *value);
+#define reflectc_get_fast(_container, _type, _member_name, _root)             \
+    ((_root)                                                                  \
+         ->fields.array[__REFLECTC_LOOKUP__##_type##_##_member_name##__]      \
+         .ptr_value)
 
 unsigned reflectc_get_pointer_depth(const struct reflectc *field);
 
-#if 0
-#define NOCONTAINER_struct
-#define NOCONTAINER_union
-#define NOCONTAINER_ENUM
-#define REFLECTC_IDENTIFIER(_type) NOCONTAINER_##_type##_TEST2
-REFLECTC_IDENTIFIER(struct abcdef)
-#endif
+void *reflectc_deref(const struct reflectc *field, void *ptr);
 
 #endif /* REFLECTC_H */

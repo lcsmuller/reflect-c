@@ -4,6 +4,7 @@
 !.gitignore
 !Makefile
 !api
+!api/.clang-format
 !api/*.PRE.h
 !*.h
 !*.c

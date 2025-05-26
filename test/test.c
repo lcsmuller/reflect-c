@@ -27,8 +27,8 @@ json_stringify(struct jsonb *jb,
 
     switch (field->type) {
     case REFLECTC_TYPES__char:
-        jsonb_string(jb, buf, bufsize, *(char **)field->ptr_value,
-                     strlen(*(char **)field->ptr_value));
+        jsonb_string(jb, buf, bufsize, field->ptr_value,
+                     strlen(field->ptr_value));
         break;
     case REFLECTC_TYPES__int:
         jsonb_number(jb, buf, bufsize, *(int *)field->ptr_value);
@@ -41,13 +41,10 @@ json_stringify(struct jsonb *jb,
         break;
     case REFLECTC_TYPES__struct: {
         jsonb_object(jb, buf, bufsize);
-        for (size_t i = 0; i < field->ht.capacity; ++i) {
-            const struct oa_hash_entry *entry = &field->ht.buckets[i];
-            if (entry->state != OA_HASH_ENTRY_OCCUPIED) continue;
-
-            struct reflectc *field = entry->value;
-            jsonb_key(jb, buf, bufsize, entry->key.buf, entry->key.length);
-            json_stringify(jb, field, buf, bufsize);
+        for (size_t i = 0; i < field->fields.len; ++i) {
+            struct reflectc *f = (struct reflectc *)&field->fields.array[i];
+            jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
+            json_stringify(jb, f, buf, bufsize);
         }
         jsonb_object_pop(jb, buf, bufsize);
     } break;
@@ -60,9 +57,9 @@ TEST
 check_json_serializer(void)
 {
     static const char expected_json[] =
-        "{\"a\":{\"string\":\"hello world\",\"boolean\":true,\"number\":42},"
-        "\"b\":{\"string\":\"hello world\",\"boolean\":true,\"number\":42},"
-        "\"c\":{\"string\":\"hello world\",\"boolean\":true,\"number\":42},"
+        "{\"a\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
+        "\"b\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
+        "\"c\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
         "\"d\":\"hello world\"}";
     char got_json[sizeof(expected_json)] = { 0 };
 
@@ -124,10 +121,11 @@ check_loop_through(void)
     struct baz baz = { &a, &b, &ccc, d };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
 
-    ASSERT_EQ(&a, *reflectc_get(struct bar **)(wrapped_baz, "a", 1));
-    ASSERT_EQ(&b, *reflectc_get(struct bar **)(wrapped_baz, "b", 1));
-    ASSERT_EQ(&ccc, *reflectc_get(struct bar ****)(wrapped_baz, "c", 1));
-    ASSERT_MEM_EQ(&d, *reflectc_get(char **)(wrapped_baz, "d", 1), sizeof(d));
+    ASSERT_EQ(&a, reflectc_get_fast(struct, baz, a, wrapped_baz));
+    ASSERT_EQ(&b, reflectc_get_fast(struct, baz, b, wrapped_baz));
+    ASSERT_EQ(&ccc, reflectc_get_fast(struct, baz, c, wrapped_baz));
+    ASSERT_MEM_EQ(&d, reflectc_get_fast(struct, baz, d, wrapped_baz),
+                  sizeof(d));
 
     PASS();
 }
@@ -137,13 +135,13 @@ check_array(void)
 {
     struct foo foo = { true, { 42, 43, 44, 45 }, "hello world" };
     struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
-
-    int(*ptr_numbers)[4] = reflectc_get(int(*)[4])(wrapped_foo, "number", 6);
-    ASSERT_EQ(42, (*ptr_numbers)[0]);
-    ASSERT_EQ(43, (*ptr_numbers)[1]);
-    ASSERT_EQ(44, (*ptr_numbers)[2]);
-    ASSERT_EQ(45, (*ptr_numbers)[3]);
-
+    ASSERT_EQ(foo.boolean,
+              *(bool *)reflectc_get_fast(struct, foo, boolean, wrapped_foo));
+    ASSERT_MEM_EQ(foo.number,
+                  reflectc_get_fast(struct, foo, number, wrapped_foo),
+                  sizeof(foo.number));
+    ASSERT_STR_EQ(foo.string,
+                  reflectc_get_fast(struct, foo, string, wrapped_foo));
     PASS();
 }
 

@@ -1,8 +1,4 @@
-# Dependencies
-CORE_DIR = core
-
-CORE_OBJS = $(CORE_DIR)/oa_hash.o
-OBJS      = reflect-c.o $(CORE_OBJS)
+OBJS      = reflect-c.o
 
 # Resulting library
 LIB_NO_EXT = libreflectc

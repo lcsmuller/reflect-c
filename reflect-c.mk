@@ -51,7 +51,7 @@ $(OUT_C): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "#include \"$(OUT_H)\"" > $@
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_FORWARD -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	@ echo "Generating $@"	
-	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) >> $@
+	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 
 headers: $(HEADERS)
 

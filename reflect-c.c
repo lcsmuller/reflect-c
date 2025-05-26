@@ -21,22 +21,18 @@ reflectc_length(const struct reflectc *field)
 }
 
 void *
-_reflectc_get(struct reflectc *root, const char *const name, const size_t len)
+_reflectc_get(struct reflectc *root,
+              const char *const name,
+              const size_t len,
+              const int index)
 {
-    const struct reflectc *field = oa_hash_get(&root->ht, name, len);
-    return field ? field->ptr_value : NULL;
-}
-
-void *
-reflectc_append(struct reflectc *root, struct reflectc *field, void *ptr_value)
-{
-    struct reflectc *new_field = malloc(sizeof *new_field);
-    memcpy(new_field, field, sizeof *field);
-    new_field->ptr_value = ptr_value;
-    if ((field = oa_hash_set(&root->ht, new_field->name.buf,
-                             new_field->name.len, new_field)))
+    const struct reflectc *f;
+    for (f = &root->fields.array[index];
+         f != &root->fields.array[root->fields.len]; ++f)
     {
-        return field->ptr_value;
+        if (f->name.len == len && !memcmp(f->name.buf, name, len)) {
+            return f->ptr_value;
+        }
     }
     return NULL;
 }
@@ -45,16 +41,44 @@ unsigned
 reflectc_get_pointer_depth(const struct reflectc *field)
 {
     unsigned depth = 1;
-
-    if (!field || !field->ptr_value) return 0;
-
+    if (!field || !field->ptr_value) {
+        return 0;
+    }
     if (field->decorator.len) {
         const char *ptr = field->decorator.buf;
-        while (strchr(ptr++, '*') != NULL)
+        while ((ptr = strchr(ptr++, '*'))) {
             ++depth;
+            ++ptr;
+        }
     }
     if (field->dimensions.len && strchr(field->dimensions.buf, '[')) {
         ++depth;
     }
     return depth;
+}
+
+void *
+reflectc_deref(const struct reflectc *field, void *ptr)
+{
+    if (!field) {
+        return NULL;
+    }
+    if (!ptr && field->ptr_value) {
+        ptr = field->ptr_value;
+    }
+    if (!ptr) {
+        return NULL;
+    }
+
+    /* If it looks like an array (e.g., int [N]), deref to get the pointer */
+    if (field->dimensions.len && strchr(field->dimensions.buf, '[')) {
+        return (char(*)[])ptr;
+    }
+    /* If it looks like a pointer of any level (e.g., *, **, etc.), deref once
+     */
+    if (field->decorator.len && strchr(field->decorator.buf, '*')) {
+        return *(void **)ptr;
+    }
+    /* Already _type *, nothing to do */
+    return ptr;
 }

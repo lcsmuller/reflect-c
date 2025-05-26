@@ -18,27 +18,28 @@
 #define REFLECTC_STRUCT(_name)
 #endif
 #ifndef REFLECTC_STRUCT_END
-#define REFLECTC_STRUCT_END
+#define REFLECTC_STRUCT_END(_namespace)
 #endif
 #ifndef REFLECTC_UNION
 #define REFLECTC_UNION(_name)
 #endif
 #ifndef REFLECTC_UNION_END
-#define REFLECTC_UNION_END
+#define REFLECTC_UNION_END(_namespace)
 #endif
 #ifndef REFLECTC_ENUM
 #define REFLECTC_ENUM(_name)
 #endif
 #ifndef REFLECTC_ENUM_END
-#define REFLECTC_ENUM_END
+#define REFLECTC_ENUM_END(_namespace)
 #endif
 
 #ifndef RCF
-#define RCF(_qualifier, _container, _type, _decorator, _name, _dimensions)
+#define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
+            _dimensions)
 #endif
 
 #ifndef RCE
-#define RCE(_enumerator, _eq, _value)
+#define RCE(_namespace, _enumerator, _eq, _value)
 #endif
 
 #include REFLECTC_ENTRY
