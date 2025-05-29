@@ -16,7 +16,7 @@
  * more) */
 static void
 json_stringify(struct jsonb *jb,
-               struct reflectc *field,
+               const struct reflectc *field,
                char buf[],
                const size_t bufsize)
 {
@@ -42,7 +42,7 @@ json_stringify(struct jsonb *jb,
     case REFLECTC_TYPES__struct: {
         jsonb_object(jb, buf, bufsize);
         for (size_t i = 0; i < field->fields.len; ++i) {
-            struct reflectc *f = (struct reflectc *)&field->fields.array[i];
+            const struct reflectc *f = &field->fields.array[i];
             jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
             json_stringify(jb, f, buf, bufsize);
         }
@@ -121,11 +121,10 @@ check_loop_through(void)
     struct baz baz = { &a, &b, &ccc, d };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
 
-    ASSERT_EQ(&a, reflectc_get_fast(struct, baz, a, wrapped_baz));
-    ASSERT_EQ(&b, reflectc_get_fast(struct, baz, b, wrapped_baz));
-    ASSERT_EQ(&ccc, reflectc_get_fast(struct, baz, c, wrapped_baz));
-    ASSERT_MEM_EQ(&d, reflectc_get_fast(struct, baz, d, wrapped_baz),
-                  sizeof(d));
+    ASSERT_EQ(&a, reflectc_get_fast(baz, a, wrapped_baz));
+    ASSERT_EQ(&b, reflectc_get_fast(baz, b, wrapped_baz));
+    ASSERT_EQ(&ccc, reflectc_get_fast(baz, c, wrapped_baz));
+    ASSERT_MEM_EQ(&d, reflectc_get_fast(baz, d, wrapped_baz), sizeof(d));
 
     PASS();
 }
@@ -139,12 +138,10 @@ check_array(void)
     struct foo foo = { true, { 42, 43, 44, 45 }, "hello world", &native };
     struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
     ASSERT_EQ(foo.boolean,
-              *(bool *)reflectc_get_fast(struct, foo, boolean, wrapped_foo));
-    ASSERT_MEM_EQ(foo.number,
-                  reflectc_get_fast(struct, foo, number, wrapped_foo),
+              *(bool *)reflectc_get_fast(foo, boolean, wrapped_foo));
+    ASSERT_MEM_EQ(foo.number, reflectc_get_fast(foo, number, wrapped_foo),
                   sizeof(foo.number));
-    ASSERT_STR_EQ(foo.string,
-                  reflectc_get_fast(struct, foo, string, wrapped_foo));
+    ASSERT_STR_EQ(foo.string, reflectc_get_fast(foo, string, wrapped_foo));
     PASS();
 }
 

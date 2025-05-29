@@ -43,13 +43,11 @@ void *_reflectc_get(struct reflectc *root,
                     const char *const name,
                     const size_t len,
                     const int index);
-#define _reflectc_get_unoptmized(_root, _name, _len)                          \
-    _reflectc_get(_root, _name, _len, 0)
-#define reflectc_get(_type) (_type) _reflectc_get_unoptmized
+#define reflectc_get(_root, _name, _len) _reflectc_get(_root, _name, _len, 0)
 
-#define reflectc_get_fast(_container, _type, _member_name, _root)             \
+#define reflectc_get_fast(_namespace, _member_name, _root)                    \
     ((_root)                                                                  \
-         ->fields.array[__REFLECTC_LOOKUP__##_type##_##_member_name##__]      \
+         ->fields.array[__REFLECTC_LOOKUP__##_namespace##_##_member_name##__] \
          .ptr_value)
 
 unsigned reflectc_get_pointer_depth(const struct reflectc *field);
