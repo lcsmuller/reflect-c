@@ -22,6 +22,12 @@
 #define _
 #define _is_empty(_arg) (#_arg[0] == '\0')
 #define _str(_arg) { _is_empty(_arg) ? NULL : #_arg, _is_empty(_arg) ? 0 : sizeof(#_arg) - 1 }
+
+static struct reflectc *_from_noop(void *self, struct reflectc *root)
+{
+    (void)self;
+    return root;
+}
 */
 
 #define REFLECTC_PRIVATE 1
@@ -35,12 +41,18 @@
                       _name, _dimensions)                                     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            REFLECTC_TYPES__##_type, 0, NULL, { 0, NULL } },
+            REFLECTC_TYPES__##_type, 0, NULL, { 0, NULL }, _from_noop },
 #define _pick_field_container(_namespace, _qualifier, _container, _type,      \
                               _decorator, _name, _dimensions)                 \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            REFLECTC_TYPES__##_container, 0, NULL, { 0, NULL } },
+            REFLECTC_TYPES__##_container, 0, NULL, { 0, NULL },               \
+/*#! #ifdef */ REFLECTC_DEFINED##__##_type /*#! */                            \
+            (reflectc_from_cb)reflectc_from_##_type                           \
+/*#! #else */ /*#! */                                                         \
+            _from_noop                                                        \
+/*#! #endif */ /*#! */                                                        \
+         },
 #define _pick_field_struct _pick_field_container
 #define _pick_field_union _pick_field_container
 #define _pick_table_end(_container, _type)                                    \
@@ -49,7 +61,8 @@
     static const struct reflectc _type##__root =                              \
         { sizeof(_container _type), { NULL, 0 }, { NULL, 0 },                 \
             { #_type, sizeof(#_type) - 1 }, { NULL, 0 },                      \
-            REFLECTC_TYPES__##_container, 0, NULL, { 0, NULL } };
+            REFLECTC_TYPES__##_container, 0, NULL, { 0, NULL },               \
+            (reflectc_from_cb)reflectc_from_##_type };
 
 #define REFLECTC_PUBLIC  1
 #define REFLECTC_PRIVATE 1
@@ -67,6 +80,7 @@
 #undef _pick_field_container
 #undef _pick_field_struct
 #undef _pick_field_union
+#undef _pick_table_end
 
 #else
 
@@ -103,7 +117,7 @@
 #define _pick_field_container(_name, _type, _decorator, _dimensions)          \
                 f->ptr_value = reflectc_deref(f, &self->_name);               \
                 if (reflectc_get_pointer_depth(f) <= 2) {                     \
-                    reflectc_from_##_type(f->ptr_value, f);                   \
+                    f->from_cb(f->ptr_value, f);                              \
                 }                                                             \
                 ++f;
 #define _pick_field_struct _pick_field_container

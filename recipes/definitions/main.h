@@ -6,11 +6,21 @@
 #define _
 */
 
+#define _pick_namespace(_namespace)                                           \
+    /*#! #define */ REFLECTC_DEFINED##__##_namespace
+#define REFLECTC_PUBLIC 1
+#define REFLECTC_PRIVATE 1
+#define REFLECTC_STRUCT(_type) _pick_namespace(_type)
+#define REFLECTC_UNION(_type) _pick_namespace(_type)
+#define REFLECTC_ENUM(_name) _pick_namespace(_name)
+#include "reflect-c_EXPAND.h"
+#undef _pick_namespace
+
 #define _pick_container(_container, _type)                                    \
     _container _type {
 #define _pick_field(_namespace, _qualifier, _container, _type, _decorator,    \
                     _name, _dimensions)                                       \
-    _qualifier _container _type _decorator _name _dimensions;
+        _qualifier _container _type _decorator _name _dimensions;
 #define _pick_container_end(_namespace)                                       \
     };
 #define REFLECTC_PUBLIC 1

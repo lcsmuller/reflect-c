@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 enum reflectc_types {
-    REFLECTC_TYPES__UNKNOWN,
+    REFLECTC_TYPES__void,
     REFLECTC_TYPES__bool,
     REFLECTC_TYPES__char,
     REFLECTC_TYPES__short,
@@ -17,6 +17,9 @@ enum reflectc_types {
     REFLECTC_TYPES__enum,
     REFLECTC_TYPES__EXTEND
 };
+
+typedef struct reflectc *(*reflectc_from_cb)(void *self,
+                                             struct reflectc *root);
 
 struct reflectc {
     const size_t size;
@@ -31,6 +34,7 @@ struct reflectc {
         size_t len;
         const struct reflectc *array;
     } fields;
+    const reflectc_from_cb from_cb;
 };
 
 size_t reflectc_length(const struct reflectc *field);

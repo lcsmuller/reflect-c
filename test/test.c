@@ -133,7 +133,10 @@ check_loop_through(void)
 TEST
 check_array(void)
 {
-    struct foo foo = { true, { 42, 43, 44, 45 }, "hello world" };
+    struct {
+        int number;
+    } native = { 42 };
+    struct foo foo = { true, { 42, 43, 44, 45 }, "hello world", &native };
     struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
     ASSERT_EQ(foo.boolean,
               *(bool *)reflectc_get_fast(struct, foo, boolean, wrapped_foo));

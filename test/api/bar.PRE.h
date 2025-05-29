@@ -1,8 +1,6 @@
 #ifdef REFLECTC_DEFINITIONS
 /*#!
-#include <stddef.h>
 #include <stdbool.h>
-
 #define HELLO 1
 */
 #endif
