@@ -112,12 +112,12 @@ static struct reflectc *_from_noop(void *self, struct reflectc *root)
                 root[i].fields.len = n_fields;                                \
                 memcpy(f, _type##__fields, sizeof(_type##__fields));
 #define _pick_field__(_name, _type, _decorator, _dimensions)                  \
-                f->ptr_value = reflectc_deref(f, &self->_name);               \
+                f->ptr_value = &self->_name;                                  \
                 ++f;
 #define _pick_field_container(_name, _type, _decorator, _dimensions)          \
-                f->ptr_value = reflectc_deref(f, &self->_name);               \
+                f->ptr_value = &self->_name;                                  \
                 if (reflectc_get_pointer_depth(f) <= 2) {                     \
-                    f->from_cb(f->ptr_value, f);                              \
+                    f->from_cb(reflectc_deref(f), f);                         \
                 }                                                             \
                 ++f;
 #define _pick_field_struct _pick_field_container

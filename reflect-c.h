@@ -39,19 +39,34 @@ struct reflectc {
 
 size_t reflectc_length(const struct reflectc *field);
 
-void *_reflectc_get(struct reflectc *root,
-                    const char *const name,
-                    const size_t len,
-                    const int index);
-#define reflectc_get(_root, _name, _len) _reflectc_get(_root, _name, _len, 0)
-
-#define reflectc_get_fast(_namespace, _member_name, _root)                    \
-    ((_root)                                                                  \
-         ->fields.array[__REFLECTC_LOOKUP__##_namespace##_##_member_name##__] \
-         .ptr_value)
+ptrdiff_t reflectc_get_pos(struct reflectc *root,
+                           const char *const name,
+                           const size_t len);
 
 unsigned reflectc_get_pointer_depth(const struct reflectc *field);
 
-void *reflectc_deref(const struct reflectc *field, void *ptr);
+void *reflectc_deref(const struct reflectc *field);
+
+#define reflectc_get(_root, _pos)                                             \
+    reflectc_deref((_root)->fields.array + (_pos))
+#define reflectc_set(_root, _pos, _value, _size)                              \
+    (((_root)->size == _size && (_root)->fields.len)                          \
+         ? (memcpy((_root)->fields.array[_pos].ptr_value, &_value, _size), 0) \
+         : -1)
+
+#define reflectc_get_fast(_namespace, _member_name, _root)                    \
+    reflectc_deref((_root)->fields.array                                      \
+                   + __REFLECTC_LOOKUP__##_namespace##_##_member_name##__)
+#define reflectc_set_fast(_namespace, _member_name, _root, _value, _size)      \
+    (((_root)->size == _size && (_root)->fields.len)                           \
+         ? (memcpy(                                                            \
+                (_root)                                                        \
+                    ->fields                                                   \
+                    .array                                                     \
+                        [__REFLECTC_LOOKUP__##_namespace##_##_member_name##__] \
+                    .ptr_value,                                                \
+                &_value, _size),                                               \
+            0)                                                                 \
+         : -1)
 
 #endif /* REFLECTC_H */

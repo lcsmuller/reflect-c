@@ -27,8 +27,8 @@ json_stringify(struct jsonb *jb,
 
     switch (field->type) {
     case REFLECTC_TYPES__char:
-        jsonb_string(jb, buf, bufsize, field->ptr_value,
-                     strlen(field->ptr_value));
+        jsonb_string(jb, buf, bufsize, *(char **)field->ptr_value,
+                     strlen(*(char **)field->ptr_value));
         break;
     case REFLECTC_TYPES__int:
         jsonb_number(jb, buf, bufsize, *(int *)field->ptr_value);
