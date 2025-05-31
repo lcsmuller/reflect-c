@@ -3,37 +3,45 @@
 
 #include "reflect-c.h"
 
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t) - 1)
+#endif
+
 size_t
 reflectc_length(const struct reflectc *member)
 {
+    struct reflectc_mut *mut_member = (struct reflectc_mut *)member;
     size_t length = 1;
 
     if (!member || !member->ptr_value) return 0;
 
-    if (member->dimensions.len) {
+    if (member->dimensions.length) {
         const char *ptr = member->dimensions.buf;
         while ((ptr = strchr(ptr, '[')) != NULL) {
             if (strchr(++ptr, ']') == NULL) return 0;
             length *= (size_t)strtoul(ptr, NULL, 10);
         }
     }
-    return member->length > length ? member->length : length;
+    if (member->length < length) {
+        mut_member->length = length;
+    }
+    return member->length;
 }
 
-ptrdiff_t
+size_t
 reflectc_get_pos(const struct reflectc *root,
                  const char *const name,
-                 const size_t len)
+                 const size_t length)
 {
-    const struct reflectc *f;
-    for (f = &root->members.array[0];
-         f != &root->members.array[root->members.len]; ++f)
+    const struct reflectc *m;
+    for (m = &root->members.array[0];
+         m != &root->members.array[root->members.length]; ++m)
     {
-        if (f->name.len == len && !memcmp(f->name.buf, name, len)) {
-            return (ptrdiff_t)(f - root->members.array);
+        if (m->name.length == length && !memcmp(m->name.buf, name, length)) {
+            return (size_t)(m - root->members.array);
         }
     }
-    return -1;
+    return SIZE_MAX;
 }
 
 unsigned
@@ -43,14 +51,14 @@ reflectc_get_pointer_depth(const struct reflectc *member)
     if (!member || !member->ptr_value) {
         return 0;
     }
-    if (member->decorator.len) {
+    if (member->decorator.length) {
         const char *ptr = member->decorator.buf;
         while ((ptr = strchr(ptr++, '*'))) {
             ++depth;
             ++ptr;
         }
     }
-    if (member->dimensions.len && strchr(member->dimensions.buf, '[')) {
+    if (member->dimensions.length && strchr(member->dimensions.buf, '[')) {
         ++depth;
     }
     return depth;
@@ -62,19 +70,27 @@ reflectc_deref(const struct reflectc *member)
     if (!member) {
         return NULL;
     }
-    /* If it looks like an array (e.g., int [N]), deref to get the pointer */
-    if (member->dimensions.len && member->dimensions.buf
+    /* If its a pointer to array (e.g. int (*)[N]), deref once */
+    if (member->dimensions.length && member->dimensions.buf
         && strchr(member->dimensions.buf, '['))
     {
         return (char(*)[])member->ptr_value;
     }
-    /* If it looks like a pointer of any level (e.g., *, **, etc.), deref once
-     */
-    if (member->decorator.len && member->decorator.buf
+    /* If its a pointer of any level (e.g., *, **, etc.), deref once */
+    if (member->decorator.length && member->decorator.buf
         && strchr(member->decorator.buf, '*'))
     {
         return *(void **)member->ptr_value;
     }
     /* Already pointer, nothing to do */
     return member->ptr_value;
+}
+
+const void *
+reflectc_memcpy(const struct reflectc *dest, const void *src, size_t size)
+{
+    if (!dest || !src || !dest->ptr_value || size > dest->size) {
+        return NULL;
+    }
+    return memcpy((void *)dest->ptr_value, src, size);
 }
