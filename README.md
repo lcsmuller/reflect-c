@@ -4,11 +4,11 @@ A library that adds reflection capabilities to C structs through code generation
 
 ## Features
 - Zero runtime overhead with metadata generated at compile time
-- Struct field introspection and manipulation
+- Struct member introspection and manipulation
 - Support for nested structs, unions, and enums
 - Pointer handling with automatic dereferencing
-- Field type validation and safety
-- Support for field decorators (qualifiers, pointers, arrays)
+- Member type validation and safety
+- Support for member decorators (qualifiers, pointers, arrays)
 - Compatible with C89/ANSI C
 - No external dependencies
 - Easily integrate with JSON serialization/deserialization
@@ -63,12 +63,12 @@ int main() {
     // Create a reflection wrapper for the person struct
     struct reflectc *r_person = reflectc_from_person(&p, NULL);
 
-    // Access fields statically (fast access)
-    char *name_field = (char *)reflectc_get_fast(person, name, r_person);
-    printf("Name: %s\n", name_field);
-    // Access fields dynamically (using string names)
-    char *email_field = (char *)reflectc_get(r_person, "email", strlen("email"));
-    printf("Email: %s\n", name_field);
+    // Access members statically (fast access)
+    char *name_member = (char *)reflectc_get_fast(person, name, r_person);
+    printf("Name: %s\n", name_member);
+    // Access members dynamically (using string names)
+    char *email_member = (char *)reflectc_get(r_person, "email", strlen("email"));
+    printf("Email: %s\n", name_member);
 
     // Clean up
     reflectc_free(r_person);
@@ -87,31 +87,31 @@ The library can be easily used for JSON serialization, as demonstrated in the te
 #include "reflect-c.h"
 #include "reflect-c_GENERATED.h"
 
-void json_stringify(struct jsonb *jb, const struct reflectc *field,
+void json_stringify(struct jsonb *jb, const struct reflectc *member,
                    char buf[], const size_t bufsize)
 {
-    if (field->decorator.len && field->ptr_value == NULL) {
+    if (member->decorator.len && member->ptr_value == NULL) {
         jsonb_null(jb, buf, bufsize);
         return;
     }
 
-    switch (field->type) {
+    switch (member->type) {
     case REFLECTC_TYPES__char:
-        jsonb_string(jb, buf, bufsize, field->ptr_value, strlen(field->ptr_value));
+        jsonb_string(jb, buf, bufsize, member->ptr_value, strlen(member->ptr_value));
         break;
     case REFLECTC_TYPES__int:
-        jsonb_number(jb, buf, bufsize, *(int *)field->ptr_value);
+        jsonb_number(jb, buf, bufsize, *(int *)member->ptr_value);
         break;
     case REFLECTC_TYPES__bool:
-        jsonb_bool(jb, buf, bufsize, *(bool *)field->ptr_value);
+        jsonb_bool(jb, buf, bufsize, *(bool *)member->ptr_value);
         break;
     case REFLECTC_TYPES__float:
-        jsonb_number(jb, buf, bufsize, *(float *)field->ptr_value);
+        jsonb_number(jb, buf, bufsize, *(float *)member->ptr_value);
         break;
     case REFLECTC_TYPES__struct: {
         jsonb_object(jb, buf, bufsize);
-        for (size_t i = 0; i < field->fields.len; ++i) {
-            const struct reflectc *f = &field->fields.array[i];
+        for (size_t i = 0; i < member->members.len; ++i) {
+            const struct reflectc *f = &member->members.array[i];
             jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
             json_stringify(jb, f, buf, bufsize);
         }
@@ -149,14 +149,14 @@ int main() {
 
 ### Core Macros
 
-- `PUBLIC(container_type, name, field_count, fields_tuple)`: Defines a public struct/enum/union with reflection
-- `PRIVATE(container_type, name, field_count, fields_tuple)`: Defines a private struct/enum/union with reflection
+- `PUBLIC(container_type, name, member_count, members_tuple)`: Defines a public struct/enum/union with reflection
+- `PRIVATE(container_type, name, member_count, members_tuple)`: Defines a private struct/enum/union with reflection
 
-### Field Definition
+### Member Definition
 
-Fields are defined as tuples with the following format:
-- For struct/union fields: `(qualifier, container, type, decorator, name, dimensions)`
-- For enum fields: `(enumerator, assignment_op, value)`
+Members are defined as tuples with the following format:
+- For struct/union members: `(qualifier, container, type, decorator, name, dimensions)`
+- For enum members: `(enumerator, assignment_op, value)`
 
 ### Generated Functions
 
@@ -165,15 +165,15 @@ For each reflected type `foo`, these functions are generated:
 
 ### Core Types
 
-- `struct reflectc`: Holds reflection metadata for a struct field
+- `struct reflectc`: Holds reflection metadata for a struct member
   - `size_t size`: Size of the type in bytes
-  - `struct { const char *buf; size_t len } qualifier`: Field qualifier
-  - `struct { const char *buf; size_t len } decorator`: Field decorator (* for pointers)
-  - `struct { const char *buf; size_t len } name`: Field name
-  - `struct { const char *buf; size_t len } dimensions`: Field dimensions (for arrays)
-  - `enum reflectc_types type`: Field type
+  - `struct { const char *buf; size_t len } qualifier`: Member qualifier
+  - `struct { const char *buf; size_t len } decorator`: Member decorator (* for pointers)
+  - `struct { const char *buf; size_t len } name`: Member name
+  - `struct { const char *buf; size_t len } dimensions`: Member dimensions (for arrays)
+  - `enum reflectc_types type`: Member type
   - `void *ptr_value`: Pointer to the actual value
-  - `struct { struct reflectc *array; size_t len } fields`: Nested fields (for structs/unions)
+  - `struct { struct reflectc *array; size_t len } members`: Nested members (for structs/unions)
   - `reflectc_from_cb from_cb`: Callback for generating child reflectc objects
 
 ## License

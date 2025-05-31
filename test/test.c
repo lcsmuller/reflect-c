@@ -15,17 +15,17 @@
 /* partial implementation just for testing purposes */
 static void
 json_stringify(struct jsonb *jb,
-               const struct reflectc *field,
+               const struct reflectc *member,
                char buf[],
                const size_t bufsize)
 {
-    const void *value = reflectc_get(field);
-    if (field->decorator.len && field->ptr_value == NULL) {
+    const void *value = reflectc_get(member);
+    if (member->decorator.len && member->ptr_value == NULL) {
         jsonb_null(jb, buf, bufsize);
         return;
     }
 
-    switch (field->type) {
+    switch (member->type) {
     case REFLECTC_TYPES__char:
         jsonb_string(jb, buf, bufsize, value, strlen(value));
         break;
@@ -39,17 +39,17 @@ json_stringify(struct jsonb *jb,
         jsonb_number(jb, buf, bufsize, *(float *)value);
         break;
     case REFLECTC_TYPES__struct: {
-        if (field->length > 1) {
+        if (member->length > 1) {
             jsonb_array(jb, buf, bufsize);
-            for (size_t i = 0; i < field->length; ++i) {
-                json_stringify(jb, &field->fields.array[i], buf, bufsize);
+            for (size_t i = 0; i < member->length; ++i) {
+                json_stringify(jb, &member->members.array[i], buf, bufsize);
             }
             jsonb_array_pop(jb, buf, bufsize);
         }
         else {
             jsonb_object(jb, buf, bufsize);
-            for (size_t i = 0; i < field->fields.len; ++i) {
-                const struct reflectc *f = &field->fields.array[i];
+            for (size_t i = 0; i < member->members.len; ++i) {
+                const struct reflectc *f = &member->members.array[i];
                 jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
                 json_stringify(jb, f, buf, bufsize);
             }

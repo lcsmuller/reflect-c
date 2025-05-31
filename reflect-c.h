@@ -35,7 +35,7 @@ typedef struct reflectc *(*reflectc_from_cb)(void *self,
     _qualifier struct {                                                       \
         _qualifier size_t len;                                                \
         _qualifier _REFLECTC_PICKER_##_qualifier *_qualifier array;           \
-    } fields;                                                                 \
+    } members;                                                                \
     const reflectc_from_cb from_cb
 
 struct reflectc {
@@ -50,45 +50,45 @@ struct reflectc_mut {
 #undef _REFLECTC_PICKER_const
 #undef _REFLECTC_PICKER___BLANK__
 
-size_t reflectc_length(const struct reflectc *field);
+size_t reflectc_length(const struct reflectc *member);
 
 ptrdiff_t reflectc_get_pos(const struct reflectc *root,
                            const char *const name,
                            const size_t len);
 
-unsigned reflectc_get_pointer_depth(const struct reflectc *field);
+unsigned reflectc_get_pointer_depth(const struct reflectc *member);
 
-const void *reflectc_deref(const struct reflectc *field);
+const void *reflectc_deref(const struct reflectc *member);
 
 #define reflectc_get reflectc_deref
-#define reflectc_set(_field, _value, _size)                                   \
-    (((_field) && (_field)->ptr_value && (_field)->size == (_size))           \
-         ? (memcpy((_field)->ptr_value, &_value, (_field)->size), 0)          \
+#define reflectc_set(_member, _value, _size)                                  \
+    (((_member) && (_member)->ptr_value && (_member)->size == (_size))        \
+         ? (memcpy((_member)->ptr_value, &_value, (_member)->size), 0)        \
          : -1)
 
 #define reflectc_get_member(_root, _pos)                                      \
-    (((_root) && (_root)->fields.array)                                       \
-         ? reflectc_deref((_root)->fields.array + (_pos))                     \
+    (((_root) && (_root)->members.array)                                      \
+         ? reflectc_deref((_root)->members.array + (_pos))                    \
          : NULL)
 #define reflectc_set_member(_root, _pos, _value, _size)                       \
-    ((_root) && (_root)->size == (_size) && (_root)->fields.len)              \
-        ? (memcpy(((void *)(_root)->fields.array[_pos].ptr_value, &_value,    \
+    ((_root) && (_root)->size == (_size) && (_root)->members.len)             \
+        ? (memcpy(((void *)(_root)->members.array[_pos].ptr_value, &_value,   \
                    _size),                                                    \
                   0)                                                          \
            : -1)
 
 #define reflectc_get_member_fast(_namespace, _member_name, _root)             \
-    (((_root) && (_root)->fields.array)                                       \
+    (((_root) && (_root)->members.array)                                      \
          ? reflectc_deref(                                                    \
-               (_root)->fields.array                                          \
+               (_root)->members.array                                         \
                + __REFLECTC_LOOKUP__##_namespace##_##_member_name##__)        \
          : NULL)
 #define reflectc_set_member_fast(_namespace, _member_name, _root, _value,      \
                                  _size)                                        \
-    (((_root) && (_root)->size == _size && (_root)->fields.len)                \
+    (((_root) && (_root)->size == _size && (_root)->members.len)               \
          ? (memcpy(                                                            \
                 (void *)(_root)                                                \
-                    ->fields                                                   \
+                    ->members                                                  \
                     .array                                                     \
                         [__REFLECTC_LOOKUP__##_namespace##_##_member_name##__] \
                     .ptr_value,                                                \

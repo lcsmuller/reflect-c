@@ -4,20 +4,20 @@
 #include "reflect-c.h"
 
 size_t
-reflectc_length(const struct reflectc *field)
+reflectc_length(const struct reflectc *member)
 {
     size_t length = 1;
 
-    if (!field || !field->ptr_value) return 0;
+    if (!member || !member->ptr_value) return 0;
 
-    if (field->dimensions.len) {
-        const char *ptr = field->dimensions.buf;
+    if (member->dimensions.len) {
+        const char *ptr = member->dimensions.buf;
         while ((ptr = strchr(ptr, '[')) != NULL) {
             if (strchr(++ptr, ']') == NULL) return 0;
             length *= (size_t)strtoul(ptr, NULL, 10);
         }
     }
-    return field->length > length ? field->length : length;
+    return member->length > length ? member->length : length;
 }
 
 ptrdiff_t
@@ -26,55 +26,55 @@ reflectc_get_pos(const struct reflectc *root,
                  const size_t len)
 {
     const struct reflectc *f;
-    for (f = &root->fields.array[0];
-         f != &root->fields.array[root->fields.len]; ++f)
+    for (f = &root->members.array[0];
+         f != &root->members.array[root->members.len]; ++f)
     {
         if (f->name.len == len && !memcmp(f->name.buf, name, len)) {
-            return (ptrdiff_t)(f - root->fields.array);
+            return (ptrdiff_t)(f - root->members.array);
         }
     }
     return -1;
 }
 
 unsigned
-reflectc_get_pointer_depth(const struct reflectc *field)
+reflectc_get_pointer_depth(const struct reflectc *member)
 {
     unsigned depth = 1;
-    if (!field || !field->ptr_value) {
+    if (!member || !member->ptr_value) {
         return 0;
     }
-    if (field->decorator.len) {
-        const char *ptr = field->decorator.buf;
+    if (member->decorator.len) {
+        const char *ptr = member->decorator.buf;
         while ((ptr = strchr(ptr++, '*'))) {
             ++depth;
             ++ptr;
         }
     }
-    if (field->dimensions.len && strchr(field->dimensions.buf, '[')) {
+    if (member->dimensions.len && strchr(member->dimensions.buf, '[')) {
         ++depth;
     }
     return depth;
 }
 
 const void *
-reflectc_deref(const struct reflectc *field)
+reflectc_deref(const struct reflectc *member)
 {
-    if (!field) {
+    if (!member) {
         return NULL;
     }
     /* If it looks like an array (e.g., int [N]), deref to get the pointer */
-    if (field->dimensions.len && field->dimensions.buf
-        && strchr(field->dimensions.buf, '['))
+    if (member->dimensions.len && member->dimensions.buf
+        && strchr(member->dimensions.buf, '['))
     {
-        return (char(*)[])field->ptr_value;
+        return (char(*)[])member->ptr_value;
     }
     /* If it looks like a pointer of any level (e.g., *, **, etc.), deref once
      */
-    if (field->decorator.len && field->decorator.buf
-        && strchr(field->decorator.buf, '*'))
+    if (member->decorator.len && member->decorator.buf
+        && strchr(member->decorator.buf, '*'))
     {
-        return *(void **)field->ptr_value;
+        return *(void **)member->ptr_value;
     }
     /* Already pointer, nothing to do */
-    return field->ptr_value;
+    return member->ptr_value;
 }

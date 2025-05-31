@@ -37,13 +37,13 @@ _from_noop(void *self, struct reflectc *root)
 #include "reflect-c_EXPAND.h"
 
 #define _pick_table(_container, _type)                                        \
-    static const struct reflectc _type##__fields[] = {
-#define _pick_field__(_namespace, _qualifier, _container, _type, _decorator,  \
+    static const struct reflectc _type##__members[] = {
+#define _pick_member__(_namespace, _qualifier, _container, _type, _decorator, \
                       _name, _dimensions)                                     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
             REFLECTC_TYPES__##_type, 0, NULL, { 0, NULL }, _from_noop },
-#define _pick_field_container(_namespace, _qualifier, _container, _type,      \
+#define _pick_member_container(_namespace, _qualifier, _container, _type,     \
                               _decorator, _name, _dimensions)                 \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
@@ -54,8 +54,8 @@ _from_noop(void *self, struct reflectc *root)
             _from_noop                                                        \
 /*#! #endif */ /*#! */                                                        \
          },
-#define _pick_field_struct _pick_field_container
-#define _pick_field_union _pick_field_container
+#define _pick_member_struct _pick_member_container
+#define _pick_member_union _pick_member_container
 #define _pick_table_end(_container, _type)                                    \
     };                                                                        \
                                                                               \
@@ -71,16 +71,16 @@ _from_noop(void *self, struct reflectc *root)
 #define REFLECTC_UNION(_type) _pick_table(union, _type)
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
             _dimensions)                                                      \
-        _pick_field_##_container(_namespace, _qualifier, _container, _type,   \
+        _pick_member_##_container(_namespace, _qualifier, _container, _type,  \
                                  _decorator, _name, _dimensions)
 #define REFLECTC_STRUCT_END(_namespace) _pick_table_end(struct, _namespace)
 #define REFLECTC_UNION_END(_namespace) _pick_table_end(union, _namespace)
 #include "reflect-c_EXPAND.h"
 #undef _pick_table
-#undef _pick_field__
-#undef _pick_field_container
-#undef _pick_field_struct
-#undef _pick_field_union
+#undef _pick_member__
+#undef _pick_member_container
+#undef _pick_member_struct
+#undef _pick_member_union
 #undef _pick_table_end
 
 #else
@@ -103,28 +103,28 @@ _from_noop(void *self, struct reflectc *root)
             }                                                                 \
         }                                                                     \
         if (self) {                                                           \
-            static const size_t n_fields =                                    \
-                sizeof(_type##__fields) / sizeof *_type##__fields;            \
-            struct reflectc_mut *fields_buf = malloc(sizeof(_type##__fields)  \
+            static const size_t n_members =                                   \
+                sizeof(_type##__members) / sizeof *_type##__members;          \
+            struct reflectc_mut *members_buf = malloc(sizeof(_type##__members)\
                                                      * length);               \
             size_t i;                                                         \
             for (i = 0; i < length; ++i) {                                    \
-                struct reflectc_mut *f = fields_buf + i * n_fields;           \
-                root[i].fields.array = f;                                     \
-                root[i].fields.len = n_fields;                                \
-                memcpy(f, _type##__fields, sizeof(_type##__fields));
-#define _pick_field__(_name, _type, _decorator, _dimensions)                  \
+                struct reflectc_mut *f = members_buf + i * n_members;         \
+                root[i].members.array = f;                                    \
+                root[i].members.len = n_members;                              \
+                memcpy(f, _type##__members, sizeof(_type##__members));
+#define _pick_member__(_name, _type, _decorator, _dimensions)                 \
                 f->ptr_value = &self->_name;                                  \
                 ++f;
-#define _pick_field_container(_name, _type, _decorator, _dimensions)          \
+#define _pick_member_container(_name, _type, _decorator, _dimensions)         \
                 f->ptr_value = &self->_name;                                  \
                 if (reflectc_get_pointer_depth((struct reflectc *)f) <= 2) {  \
                     f->from_cb((void *)reflectc_deref((struct reflectc *)f),  \
                                (struct reflectc *)f);                         \
                 }                                                             \
                 ++f;
-#define _pick_field_struct _pick_field_container
-#define _pick_field_union _pick_field_container
+#define _pick_member_struct _pick_member_container
+#define _pick_member_union _pick_member_container
 #define _pick_container_end(_namespace)                                       \
             }                                                                 \
         }                                                                     \
@@ -136,7 +136,7 @@ _from_noop(void *self, struct reflectc *root)
 #define REFLECTC_UNION(_type) _pick_implementation(union, _type)
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
             _dimensions)                                                      \
-            _pick_field_##_container(_name, _type, _decorator, _dimensions)
+            _pick_member_##_container(_name, _type, _decorator, _dimensions)
 #define REFLECTC_STRUCT_END(_namespace) _pick_container_end(_namespace)
 #define REFLECTC_UNION_END(_namespace) _pick_container_end(_namespace)
 #include "reflect-c_EXPAND.h"
@@ -146,15 +146,15 @@ _from_noop(void *self, struct reflectc *root)
 #define REFLECTC_UNION(_type) static _pick_implementation(union, _type)
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
             _dimensions)                                                      \
-            _pick_field_##_container(_name, _type, _decorator, _dimensions)
+            _pick_member_##_container(_name, _type, _decorator, _dimensions)
 #define REFLECTC_STRUCT_END(_namespace) _pick_container_end(_namespace)
 #define REFLECTC_UNION_END(_namespace) _pick_container_end(_namespace)
 #include "reflect-c_EXPAND.h"
 #undef _pick_implementation
-#undef _pick_field__
-#undef _pick_field_container
-#undef _pick_field_struct
-#undef _pick_field_union
+#undef _pick_member__
+#undef _pick_member_container
+#undef _pick_member_struct
+#undef _pick_member_union
 #undef _pick_container_end
 
 #endif /* REFLECTC_HEADER */
