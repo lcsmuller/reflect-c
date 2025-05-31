@@ -22,6 +22,7 @@
 !submodules
 !docs
 !docs/*
+!docs/**/*
 !core
 !core/*.c
 !core/*.h

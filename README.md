@@ -4,13 +4,15 @@ Reflection-friendly data describes complex C types without hand-written metadata
 
 ## Highlights
 
-- ⚙️ **Zero-cost metadata** – generation happens at build time, no runtime parsing.
-- 🧱 **Struct/union/enum coverage** – handles nesting, pointers, arrays, and qualifiers.
-- 🧭 **Runtime helpers** – walk members, compute pointer depth, copy values, or allocate arrays through a uniform API.
-- 🧪 **Battle-tested** – JSON round-trip examples and unit tests validate the generated metadata.
-- 📦 **Self-contained** – depends only on the standard library and your recipes.
+- **Zero-cost metadata** – generation happens at build time, no runtime parsing.
+- **Struct/union/enum coverage** – handles nesting, pointers, arrays, and qualifiers.
+- **Runtime helpers** – walk members, compute pointer depth, copy values, or allocate arrays through a uniform API.
+- **Battle-tested** – JSON round-trip examples and unit tests validate the generated metadata.
+- **Self-contained** – depends only on the standard library and your recipes.
 
 ## How the toolchain works
+
+![Reflect-C Toolchain Flow](docs/images/diagram.png)
 
 Reflect-C relies on *recipes*—header fragments that describe your types using a macro DSL. The build system performs four stages:
 
@@ -19,7 +21,7 @@ Reflect-C relies on *recipes*—header fragments that describe your types using 
 3. **Preprocess with roles** – `reflect-c_RECIPES.PRE.h` pulls in every recipe multiple times with different `REFLECTC_*` flags to emit actual C definitions, lookup tables, and wrapper functions.
 4. **Emit amalgamated sources** – the helper makefile `reflect-c.mk` produces `reflect-c_GENERATED.h/.c` alongside an optional static library `libreflectc.a` for the runtime helpers in `reflect-c.c`.
 
-The pipeline is intentionally pure-C (no Python/Rust helpers), so the same commands work on any system with an ANSI C compiler.
+The pipeline is intentionally pure-C, so the same commands work on any system with an ANSI C compiler.
 
 ## Quick start
 

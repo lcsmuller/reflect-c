@@ -109,20 +109,22 @@ _from_noop(void *self, struct reflectc *root)
                                                      * length);               \
             size_t i;                                                         \
             for (i = 0; i < length; ++i) {                                    \
-                struct reflectc_mut *f = members_buf + i * n_members;         \
-                root[i].members.array = f;                                    \
-                root[i].members.len = n_members;                              \
-                memcpy(f, _type##__members, sizeof(_type##__members));
+                struct reflectc_mut *m = members_buf + i * n_members;         \
+                root[i].members.array = m;                                    \
+                root[i].members.length = n_members;                           \
+                memcpy(m, _type##__members, sizeof(_type##__members));
 #define _pick_member__(_name, _type, _decorator, _dimensions)                 \
-                f->ptr_value = &self->_name;                                  \
-                ++f;
+                m->ptr_value = &self->_name;                                  \
+                ++m;
 #define _pick_member_container(_name, _type, _decorator, _dimensions)         \
-                f->ptr_value = &self->_name;                                  \
-                if (reflectc_get_pointer_depth((struct reflectc *)f) <= 2) {  \
-                    f->from_cb((void *)reflectc_deref((struct reflectc *)f),  \
-                               (struct reflectc *)f);                         \
+                m->ptr_value = &self->_name;                                  \
+                if (reflectc_get_pointer_depth((struct reflectc *)m) <= 2) {  \
+                    void *child = reflectc_resolve((struct reflectc *)m);     \
+                    if (child) {                                              \
+                        m->from_cb(child, (struct reflectc *)m);              \
+                    }                                                         \
                 }                                                             \
-                ++f;
+                ++m;
 #define _pick_member_struct _pick_member_container
 #define _pick_member_union _pick_member_container
 #define _pick_container_end(_namespace)                                       \
