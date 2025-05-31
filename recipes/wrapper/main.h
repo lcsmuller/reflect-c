@@ -23,7 +23,8 @@
 #define _is_empty(_arg) (#_arg[0] == '\0')
 #define _str(_arg) { _is_empty(_arg) ? NULL : #_arg, _is_empty(_arg) ? 0 : sizeof(#_arg) - 1 }
 
-static struct reflectc *_from_noop(void *self, struct reflectc *root)
+static struct reflectc*
+_from_noop(void *self, struct reflectc *root)
 {
     (void)self;
     return root;
@@ -86,9 +87,10 @@ static struct reflectc *_from_noop(void *self, struct reflectc *root)
 
 #define _pick_implementation(_container, _type)                               \
     struct reflectc *                                                         \
-    reflectc_from_##_type(_container _type *self, struct reflectc *root)      \
+    reflectc_from_##_type(_container _type *self, struct reflectc *_root)     \
     {                                                                         \
-        const size_t length = root ? reflectc_length(root) : 1;               \
+        struct reflectc_mut *root = (struct reflectc_mut *)_root;             \
+        const size_t length = _root ? reflectc_length(_root) : 1;             \
         if (!root) {                                                          \
             size_t i;                                                         \
             if (!(root = calloc(length, sizeof *root))) {                     \
@@ -103,11 +105,11 @@ static struct reflectc *_from_noop(void *self, struct reflectc *root)
         if (self) {                                                           \
             static const size_t n_fields =                                    \
                 sizeof(_type##__fields) / sizeof *_type##__fields;            \
-            struct reflectc *fields_buf = malloc(sizeof(_type##__fields)      \
-                                                 * length);                   \
+            struct reflectc_mut *fields_buf = malloc(sizeof(_type##__fields)  \
+                                                     * length);               \
             size_t i;                                                         \
             for (i = 0; i < length; ++i) {                                    \
-                struct reflectc *f = fields_buf + i * n_fields;               \
+                struct reflectc_mut *f = fields_buf + i * n_fields;           \
                 root[i].fields.array = f;                                     \
                 root[i].fields.len = n_fields;                                \
                 memcpy(f, _type##__fields, sizeof(_type##__fields));
@@ -116,8 +118,9 @@ static struct reflectc *_from_noop(void *self, struct reflectc *root)
                 ++f;
 #define _pick_field_container(_name, _type, _decorator, _dimensions)          \
                 f->ptr_value = &self->_name;                                  \
-                if (reflectc_get_pointer_depth(f) <= 2) {                     \
-                    f->from_cb(reflectc_deref(f), f);                         \
+                if (reflectc_get_pointer_depth((struct reflectc *)f) <= 2) {  \
+                    f->from_cb((void *)reflectc_deref((struct reflectc *)f),  \
+                               (struct reflectc *)f);                         \
                 }                                                             \
                 ++f;
 #define _pick_field_struct _pick_field_container
@@ -125,7 +128,7 @@ static struct reflectc *_from_noop(void *self, struct reflectc *root)
 #define _pick_container_end(_namespace)                                       \
             }                                                                 \
         }                                                                     \
-        return root;                                                          \
+        return (struct reflectc *)root;                                       \
     }
 
 #define REFLECTC_PUBLIC 1

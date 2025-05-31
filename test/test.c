@@ -12,14 +12,14 @@
 
 #include "reflect-c_GENERATED.h"
 
-/* partial implementation just for testing purposes (missing array parsing and
- * more) */
+/* partial implementation just for testing purposes */
 static void
 json_stringify(struct jsonb *jb,
                const struct reflectc *field,
                char buf[],
                const size_t bufsize)
 {
+    const void *value = reflectc_get(field);
     if (field->decorator.len && field->ptr_value == NULL) {
         jsonb_null(jb, buf, bufsize);
         return;
@@ -27,26 +27,34 @@ json_stringify(struct jsonb *jb,
 
     switch (field->type) {
     case REFLECTC_TYPES__char:
-        jsonb_string(jb, buf, bufsize, *(char **)field->ptr_value,
-                     strlen(*(char **)field->ptr_value));
+        jsonb_string(jb, buf, bufsize, value, strlen(value));
         break;
     case REFLECTC_TYPES__int:
-        jsonb_number(jb, buf, bufsize, *(int *)field->ptr_value);
+        jsonb_number(jb, buf, bufsize, *(int *)value);
         break;
     case REFLECTC_TYPES__bool:
-        jsonb_bool(jb, buf, bufsize, *(bool *)field->ptr_value);
+        jsonb_bool(jb, buf, bufsize, *(bool *)value);
         break;
     case REFLECTC_TYPES__float:
-        jsonb_number(jb, buf, bufsize, *(float *)field->ptr_value);
+        jsonb_number(jb, buf, bufsize, *(float *)value);
         break;
     case REFLECTC_TYPES__struct: {
-        jsonb_object(jb, buf, bufsize);
-        for (size_t i = 0; i < field->fields.len; ++i) {
-            const struct reflectc *f = &field->fields.array[i];
-            jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
-            json_stringify(jb, f, buf, bufsize);
+        if (field->length > 1) {
+            jsonb_array(jb, buf, bufsize);
+            for (size_t i = 0; i < field->length; ++i) {
+                json_stringify(jb, &field->fields.array[i], buf, bufsize);
+            }
+            jsonb_array_pop(jb, buf, bufsize);
         }
-        jsonb_object_pop(jb, buf, bufsize);
+        else {
+            jsonb_object(jb, buf, bufsize);
+            for (size_t i = 0; i < field->fields.len; ++i) {
+                const struct reflectc *f = &field->fields.array[i];
+                jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
+                json_stringify(jb, f, buf, bufsize);
+            }
+            jsonb_object_pop(jb, buf, bufsize);
+        }
     } break;
     default:
         break;
@@ -121,10 +129,11 @@ check_loop_through(void)
     struct baz baz = { &a, &b, &ccc, d };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
 
-    ASSERT_EQ(&a, reflectc_get_fast(baz, a, wrapped_baz));
-    ASSERT_EQ(&b, reflectc_get_fast(baz, b, wrapped_baz));
-    ASSERT_EQ(&ccc, reflectc_get_fast(baz, c, wrapped_baz));
-    ASSERT_MEM_EQ(&d, reflectc_get_fast(baz, d, wrapped_baz), sizeof(d));
+    ASSERT_EQ(&a, reflectc_get_member_fast(baz, a, wrapped_baz));
+    ASSERT_EQ(&b, reflectc_get_member_fast(baz, b, wrapped_baz));
+    ASSERT_EQ(&ccc, reflectc_get_member_fast(baz, c, wrapped_baz));
+    ASSERT_MEM_EQ(&d, reflectc_get_member_fast(baz, d, wrapped_baz),
+                  sizeof(d));
 
     PASS();
 }
@@ -138,10 +147,12 @@ check_array(void)
     struct foo foo = { true, { 42, 43, 44, 45 }, "hello world", &native };
     struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
     ASSERT_EQ(foo.boolean,
-              *(bool *)reflectc_get_fast(foo, boolean, wrapped_foo));
-    ASSERT_MEM_EQ(foo.number, reflectc_get_fast(foo, number, wrapped_foo),
+              *(bool *)reflectc_get_member_fast(foo, boolean, wrapped_foo));
+    ASSERT_MEM_EQ(foo.number,
+                  reflectc_get_member_fast(foo, number, wrapped_foo),
                   sizeof(foo.number));
-    ASSERT_STR_EQ(foo.string, reflectc_get_fast(foo, string, wrapped_foo));
+    ASSERT_STR_EQ(foo.string,
+                  reflectc_get_member_fast(foo, string, wrapped_foo));
     PASS();
 }
 
