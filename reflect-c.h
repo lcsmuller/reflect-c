@@ -21,37 +21,73 @@ enum reflectc_types {
 typedef struct reflectc *(*reflectc_from_cb)(void *self,
                                              struct reflectc *root);
 
+#define _REFLECTC_PICKER_const     struct reflectc
+#define _REFLECTC_PICKER___BLANK__ struct reflectc_mut
+#define REFLECTC_ATTRIBUTES(_qualifier)                                       \
+    const size_t size;                                                        \
+    const struct {                                                            \
+        const char *const buf;                                                \
+        const size_t len;                                                     \
+    } qualifier, decorator, name, dimensions;                                 \
+    const enum reflectc_types type;                                           \
+    _qualifier size_t length;                                                 \
+    _qualifier void *_qualifier ptr_value;                                    \
+    _qualifier struct {                                                       \
+        _qualifier size_t len;                                                \
+        _qualifier _REFLECTC_PICKER_##_qualifier *_qualifier array;           \
+    } members;                                                                \
+    const reflectc_from_cb from_cb
+
 struct reflectc {
-    const size_t size;
-    const struct {
-        const char *const buf;
-        const size_t len;
-    } qualifier, decorator, name, dimensions;
-    const enum reflectc_types type;
-    size_t length;
-    void *ptr_value;
-    struct {
-        size_t len;
-        const struct reflectc *array;
-    } fields;
-    const reflectc_from_cb from_cb;
+    REFLECTC_ATTRIBUTES(const);
 };
 
-size_t reflectc_length(const struct reflectc *field);
+#define __BLANK__
+struct reflectc_mut {
+    REFLECTC_ATTRIBUTES(__BLANK__);
+};
+#undef __BLANK__
+#undef _REFLECTC_PICKER_const
+#undef _REFLECTC_PICKER___BLANK__
 
-void *_reflectc_get(struct reflectc *root,
-                    const char *const name,
-                    const size_t len,
-                    const int index);
-#define reflectc_get(_root, _name, _len) _reflectc_get(_root, _name, _len, 0)
+size_t reflectc_length(const struct reflectc *member);
 
-#define reflectc_get_fast(_namespace, _member_name, _root)                    \
-    ((_root)                                                                  \
-         ->fields.array[__REFLECTC_LOOKUP__##_namespace##_##_member_name##__] \
-         .ptr_value)
+size_t reflectc_get_pos(const struct reflectc *root,
+                        const char *const name,
+                        const size_t len);
 
-unsigned reflectc_get_pointer_depth(const struct reflectc *field);
+unsigned reflectc_get_pointer_depth(const struct reflectc *member);
 
-void *reflectc_deref(const struct reflectc *field, void *ptr);
+const void *reflectc_deref(const struct reflectc *field);
+const void *reflectc_memcpy(const struct reflectc *field,
+                            const void *map,
+                            size_t size);
+
+#define reflectc_get reflectc_deref
+#define reflectc_set reflectc_memcpy
+
+#define reflectc_get_member(_root, _pos)                                      \
+    (((_root) && (_pos) < (_root)->fields.len)                                \
+         ? reflectc_deref((_root)->fields.array + (_pos))                     \
+         : NULL)
+#define reflectc_set_member(_root, _pos, _value, _size)                       \
+    (((_root) && (_pos) < (_root)->fields.len)                                \
+         ? reflectc_memcpy((_root)->fields.array + (_pos), (_value), (_size)) \
+         : NULL)
+
+#define reflectc_get_member_fast(_namespace, _member_name, _root)             \
+    (((_root) && (_root)->members.array)                                      \
+         ? reflectc_deref(                                                    \
+               (_root)->members.array                                         \
+               + __REFLECTC_LOOKUP__##_namespace##_##_member_name##__)        \
+         : NULL)
+#define reflectc_set_member_fast(_namespace, _member_name, _root, _value,     \
+                                 _size)                                       \
+    (((_root) && (_root)->fields.array)                                       \
+         ? reflectc_memcpy(                                                   \
+               (_root)->fields.array                                          \
+                   + __REFLECTC_LOOKUP__##_namespace##_##_member_name##__,    \
+               (_value), (_size))                                             \
+         : NULL)
 
 #endif /* REFLECTC_H */
