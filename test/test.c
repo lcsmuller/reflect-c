@@ -61,6 +61,83 @@ json_stringify(struct jsonb *jb,
     }
 }
 
+static void
+_json_parse(const jsmnf_pair *p,
+            const char *json,
+            size_t len,
+            const struct reflectc *member)
+{
+    if (!p || !member || !member->ptr_value) {
+        return;
+    }
+
+    switch (p->v->type) {
+    case JSMN_STRING: {
+        if (member->type != REFLECTC_TYPES__char || member->length != 1
+            || reflectc_get_pointer_depth(member) != 2)
+        {
+            return;
+        }
+    } break;
+    case JSMN_PRIMITIVE: {
+        if (member->length != 1) return;
+
+        switch (json[p->v->start]) {
+        case 't':
+        case 'f': {
+            if (member->type != REFLECTC_TYPES__bool) return;
+            bool value = json[p->v->start] == 't';
+            reflectc_set(member, &value, sizeof(value));
+        } break;
+        case 'n': {
+            if (reflectc_get_pointer_depth(member) < 2) return;
+            void *value = NULL;
+            reflectc_set(member, &value, sizeof(value));
+        } break;
+        default: {
+            if (member->type != REFLECTC_TYPES__int
+                || reflectc_get_pointer_depth(member) != 2)
+            {
+                return;
+            }
+        } break;
+        }
+        break;
+    }
+    case JSMN_OBJECT:
+        if (member->type != REFLECTC_TYPES__struct || member->length != 1) {
+            return;
+        }
+        for (size_t i = 0; i < p->length; ++i) {
+            const size_t pos = reflectc_get_pos(member, p->buckets[i].key.buf,
+                                                p->buckets[i].key.length);
+            _json_parse(&p->fields[i], json, len, member->members.array + pos);
+        }
+        break;
+    case JSMN_ARRAY:
+        for (size_t i = 0; i < p->length; ++i) {
+            /* Check if the field is an array and has the correct type */
+            _json_parse(&p->fields[i], json, len, &member[i]);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void
+json_parse(const char *json, size_t len, struct reflectc *root)
+{
+    jsmnf_loader l;
+    jsmnf_table *pairs = NULL;
+    size_t pairs_len = 0;
+    jsmnf_init(&l);
+    if (jsmnf_load_auto(&l, json, len, &pairs, &pairs_len) > 0) {
+        _json_parse(l.root, json, len, root);
+        free(pairs);
+    }
+}
+
 TEST
 check_json_serializer(void)
 {

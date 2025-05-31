@@ -6,6 +6,7 @@
 size_t
 reflectc_length(const struct reflectc *member)
 {
+    struct reflectc_mut *mut_member = (struct reflectc_mut *)member;
     size_t length = 1;
 
     if (!member || !member->ptr_value) return 0;
@@ -17,10 +18,13 @@ reflectc_length(const struct reflectc *member)
             length *= (size_t)strtoul(ptr, NULL, 10);
         }
     }
-    return member->length > length ? member->length : length;
+    if (member->length < length) {
+        mut_member->length = length;
+    }
+    return member->length;
 }
 
-ptrdiff_t
+size_t
 reflectc_get_pos(const struct reflectc *root,
                  const char *const name,
                  const size_t len)
@@ -30,10 +34,10 @@ reflectc_get_pos(const struct reflectc *root,
          f != &root->members.array[root->members.len]; ++f)
     {
         if (f->name.len == len && !memcmp(f->name.buf, name, len)) {
-            return (ptrdiff_t)(f - root->members.array);
+            return (size_t)(f - root->members.array);
         }
     }
-    return -1;
+    return (size_t)(-1);
 }
 
 unsigned
@@ -77,4 +81,13 @@ reflectc_deref(const struct reflectc *member)
     }
     /* Already pointer, nothing to do */
     return member->ptr_value;
+}
+
+const void *
+reflectc_memcpy(const struct reflectc *dest, const void *src, size_t size)
+{
+    if (!dest || !src || !dest->ptr_value || size > dest->size) {
+        return NULL;
+    }
+    return memcpy((void *)dest->ptr_value, src, size);
 }
