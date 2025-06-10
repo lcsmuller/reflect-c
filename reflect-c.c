@@ -3,82 +3,140 @@
 
 #include "reflect-c.h"
 
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t) - 1)
+#endif
+
 size_t
-reflectc_length(const struct reflectc *field)
+reflectc_length(const struct reflectc *member)
 {
+    struct reflectc_mut *mut_member = (struct reflectc_mut *)member;
     size_t length = 1;
 
-    if (!field || !field->ptr_value) return 0;
+    if (!member || !member->ptr_value) return 0;
 
-    if (field->dimensions.len) {
-        const char *ptr = field->dimensions.buf;
+    if (member->dimensions.length) {
+        const char *ptr = member->dimensions.buf;
         while ((ptr = strchr(ptr, '[')) != NULL) {
             if (strchr(++ptr, ']') == NULL) return 0;
             length *= (size_t)strtoul(ptr, NULL, 10);
         }
     }
-    return field->length > length ? field->length : length;
+    if (member->length < length) {
+        mut_member->length = length;
+    }
+    return member->length;
 }
 
-void *
-_reflectc_get(struct reflectc *root,
-              const char *const name,
-              const size_t len,
-              const int index)
+size_t
+reflectc_get_pos(const struct reflectc *root,
+                 const char *const name,
+                 const size_t length)
 {
-    const struct reflectc *f;
-    for (f = &root->fields.array[index];
-         f != &root->fields.array[root->fields.len]; ++f)
+    const struct reflectc *m;
+    for (m = &root->members.array[0];
+         m != &root->members.array[root->members.length]; ++m)
     {
-        if (f->name.len == len && !memcmp(f->name.buf, name, len)) {
-            return f->ptr_value;
+        if (m->name.length == length && !memcmp(m->name.buf, name, length)) {
+            return (size_t)(m - root->members.array);
         }
     }
-    return NULL;
+    return SIZE_MAX;
 }
 
 unsigned
-reflectc_get_pointer_depth(const struct reflectc *field)
+reflectc_get_pointer_depth(const struct reflectc *member)
 {
     unsigned depth = 1;
-    if (!field || !field->ptr_value) {
+    if (!member || !member->ptr_value) {
         return 0;
     }
-    if (field->decorator.len) {
-        const char *ptr = field->decorator.buf;
+    if (member->decorator.length) {
+        const char *ptr = member->decorator.buf;
         while ((ptr = strchr(ptr++, '*'))) {
             ++depth;
             ++ptr;
         }
     }
-    if (field->dimensions.len && strchr(field->dimensions.buf, '[')) {
+    if (member->dimensions.length && strchr(member->dimensions.buf, '[')) {
         ++depth;
     }
     return depth;
 }
 
-void *
-reflectc_deref(const struct reflectc *field, void *ptr)
+const void *
+reflectc_deref(const struct reflectc *member)
 {
-    if (!field) {
+    if (!member || !member->ptr_value) {
         return NULL;
     }
-    if (!ptr && field->ptr_value) {
-        ptr = field->ptr_value;
+    /* If its a pointer to array (e.g. int (*)[N]), deref once */
+    if (member->dimensions.length && member->dimensions.buf
+        && strchr(member->dimensions.buf, '['))
+    {
+        return (char(*)[])member->ptr_value;
     }
-    if (!ptr) {
-        return NULL;
-    }
-
-    /* If it looks like an array (e.g., int [N]), deref to get the pointer */
-    if (field->dimensions.len && strchr(field->dimensions.buf, '[')) {
-        return (char(*)[])ptr;
-    }
-    /* If it looks like a pointer of any level (e.g., *, **, etc.), deref once
+    /* If its a pointer of level 2 and above (e.g., **, ***, etc.), deref once
      */
-    if (field->decorator.len && strchr(field->decorator.buf, '*')) {
-        return *(void **)ptr;
+    if (reflectc_get_pointer_depth(member) >= 3) {
+        return *(void **)member->ptr_value;
     }
-    /* Already _type *, nothing to do */
-    return ptr;
+    /* Already pointer, nothing to do */
+    return member->ptr_value;
+}
+
+const void *
+reflectc_memcpy(const struct reflectc *dest,
+                const void *src,
+                const size_t size)
+{
+    if (!dest || !src || size > dest->size) {
+        return NULL;
+    }
+    if (!dest->ptr_value) {
+        return NULL;
+    }
+    return memcpy((void *)reflectc_deref(dest), src, size);
+}
+
+const char *
+reflectc_string(const struct reflectc *dest,
+                const char src[],
+                const size_t size)
+{
+    struct reflectc_mut *mut_dest = (struct reflectc_mut *)dest;
+    if (!dest || !src) {
+        return NULL;
+    }
+    if (dest->type != REFLECTC_TYPES__char
+        && reflectc_get_pointer_depth(dest) < 2)
+    {
+        return NULL;
+    }
+    if (!dest->ptr_value && !(mut_dest->ptr_value = calloc(1, size))) {
+        return NULL;
+    }
+    return memcpy((char *)reflectc_deref(dest), src, size);
+}
+
+void
+reflectc_array(const struct reflectc *root, const size_t length)
+{
+    struct reflectc_mut *mut_root = (struct reflectc_mut *)root;
+    if (!root) return;
+
+    if (length > reflectc_length(root)) {
+        void *tmp;
+        size_t i;
+        if (!(tmp = realloc(mut_root, length * sizeof *mut_root))) {
+            return;
+        }
+        mut_root = tmp;
+        for (i = reflectc_length(root); i < length; ++i) {
+            memcpy(mut_root + i, &mut_root[0], sizeof *mut_root);
+            mut_root[i].ptr_value = NULL;
+            mut_root[i].length = length - i;
+        }
+    }
+    mut_root->length = length;
 }
