@@ -2,6 +2,29 @@
 
 This guide complements the README by showing how the generated metadata can be used in real programs. All snippets assume that you have already run `make gen` so that `reflect-c_GENERATED.h` and the corresponding wrappers exist.
 
+> **Note for Recipe Authors:** Remember to wrap all `#include` and `#define` directives inside `/*#! ... */` blocks in your recipe files. See [Recipe Format Reference](recipe-format.md#conditional-directives--) for details.
+
+## Recipe Example
+
+Before using the runtime API, you need a properly formatted recipe. Here's a complete example showing the required `/*#! ... */` directive pattern:
+
+```c
+/* api/bar.PRE.h */
+#ifdef REFLECTC_DEFINITIONS
+/*#!
+#include <stdbool.h>
+*/
+#endif
+
+PRIVATE(struct, bar, 3, (
+    (_, _, bool, _, boolean, _),
+    (_, _, int, _, number, _),
+    (_, _, char, *, string, _)
+))
+```
+
+The `/*#! ... */` wrapper around `#include <stdbool.h>` is **required** for the generator to see and process the include directive. Without it, `bool` would be undefined during generation.
+
 ## Printing Struct Metadata
 
 ```c

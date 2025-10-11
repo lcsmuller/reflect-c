@@ -57,7 +57,7 @@ The pipeline is intentionally pure-C, so the same commands work on any system wi
 
    - `PUBLIC` / `PRIVATE` chooses whether the generated symbols are exported.
    - Tuple columns encode qualifier, container (`struct`, `union`, `enum`), raw type, pointer decoration, member name, and array dimensions.
-   - `/*#! ... */` directives become active during generation but remain comments in normal compilation units.
+   - **`/*#! ... */` directives** - **Required** for any `#include` or `#define` statements that the generator needs to see. These directives become active during generation but remain comments in normal compilation units. Without them, the preprocessor never sees your helper includes and generation fails silently.
 
 1. **Regenerate metadata.**
 
@@ -214,7 +214,7 @@ These snippets, plus additional walkthroughs, are collected in [docs/examples.md
 ### Integrating into another project
 
 1. **Vendor the sources** - add this repository as a submodule or copy `reflect-c/` into `third_party/reflect-c` (any location works as long as your build can reach the files).
-2. **Author your recipes** - place your own `.PRE.h` files (e.g., `recipes/player.PRE.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and include supporting headers inside the `/*#! ... */` blocks.
+2. **Author your recipes** - place your own `.PRE.h` files (e.g., `recipes/player.PRE.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and **wrap any `#include` or `#define` directives inside `/*#! ... */` blocks** so the generator can activate them during preprocessing.
 3. **Generate metadata during your build** - invoke the helper makefile with your recipe directory and desired output stem. For example:
 
    ```sh

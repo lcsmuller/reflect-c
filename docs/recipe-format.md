@@ -73,7 +73,11 @@ Use `_` when a field should be left empty; the generator normalises underscores 
 
 ## Conditional Directives (`/*#! ... */`)
 
-Recipes frequently include headers or helper macros only during generation. The `reflect-c_EXPAND_COMMENTS` utility strips the `/*#!` prefix, effectively "activating" the directive at generation time while keeping the recipe safe to include elsewhere.
+**Any `#include` or `#define` directive that the generator needs to see must be wrapped in `/*#! ... */` blocks.** This is a **required** pattern for recipes to work correctly.
+
+The `reflect-c_EXPAND_COMMENTS` utility strips the `/*#!` prefix, effectively "activating" the directive at generation time while keeping the recipe safe to include elsewhere. Without these directives, the preprocessor never sees your helper includes and generation fails silently.
+
+### Basic Example
 
 ```c
 #ifdef REFLECTC_DEFINITIONS
@@ -81,9 +85,48 @@ Recipes frequently include headers or helper macros only during generation. The 
 #include <stdbool.h>
 */
 #endif
+
+PUBLIC(struct, person, 2, (
+    (_, _, char, *, name, _),
+    (_, _, bool, _, active, _)
+))
 ```
 
-You can wrap any C code inside these comment blocks, including `#include` directives, helper macros, or even local static data used during generation.
+### Multiple Includes
+
+```c
+#ifdef REFLECTC_DEFINITIONS
+/*#!
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+*/
+#endif
+```
+
+### Helper Macros
+
+```c
+#ifdef REFLECTC_DEFINITIONS
+/*#!
+#include <stdbool.h>
+#define MAGIC_NUMBER 42
+*/
+#endif
+```
+
+### When to Use
+
+Use `/*#! ... */` directives whenever you need to:
+
+- Include standard library headers (e.g., `<stdbool.h>`, `<stddef.h>`, `<stdint.h>`)
+- Include custom headers for nested types
+- Define helper macros for the definitions pass
+- Declare custom typedefs used by your recipes
+
+### Important for Tooling Authors
+
+If you're writing scripts or tools that generate recipes programmatically, always emit `/*#! ... */` directives around any `#include` or `#define` statements. This is the contract that ensures your generated recipes will work with Reflect-C's preprocessor pipeline.
 
 ## Replayed Roles
 
@@ -109,6 +152,7 @@ You can statically guard nested recipes using `#ifdef REFLECTC_DEFINED__foo` to 
 
 ## Best Practices
 
+- **Always wrap `#include` and `#define` directives in `/*#! ... */` blocks** - this is the most important rule for recipe authors and tooling. Without these directives, the generator will fail silently.
 - Keep recipe files small and cohesive; one top-level type per file works well.
 - Prefer `_` over empty tokens to avoid accidental macro pasting issues.
 - Remember to update the member count when adding or removing tuples (the generator does not infer it).
