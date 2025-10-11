@@ -37,12 +37,12 @@ Structs and unions share the same tuple signature:
 (_, qualifier, container, type, decorator, name, dimensions)
 ```
 
-- **qualifier** – `const`, `volatile`, or `_` (underscore) for none.
-- **container** – `struct`, `union`, or `_` when referencing a fundamental type.
-- **type** – the raw type identifier (e.g., `int`, `foo`, `bar`).
-- **decorator** – pointer suffix (`*`, `**`, etc.) or `_` for scalars.
-- **name** – member name.
-- **dimensions** – array declarators such as `[4]` or `_` when absent.
+- **qualifier** - `const`, `volatile`, or `_` (underscore) for none.
+- **container** - `struct`, `union`, or `_` when referencing a fundamental type.
+- **type** - the raw type identifier (e.g., `int`, `foo`, `bar`).
+- **decorator** - pointer suffix (`*`, `**`, etc.) or `_` for scalars.
+- **name** - member name.
+- **dimensions** - array declarators such as `[4]` or `_` when absent.
 
 Examples:
 
@@ -89,10 +89,10 @@ You can wrap any C code inside these comment blocks, including `#include` direct
 
 The generator includes every recipe multiple times by setting these flags:
 
-- `REFLECTC_DEFINITIONS` – emits the actual type definitions (struct/union/enum).
-- `REFLECTC_WRAPPER` + `REFLECTC_HEADER` – declares `reflectc_from_<type>` functions and lookup enums for static access.
-- `REFLECTC_WRAPPER` + `REFLECTC_FORWARD` – produces forward declarations for nested types.
-- `REFLECTC_WRAPPER` – emits the implementation of `reflectc_from_<type>`.
+- `REFLECTC_DEFINITIONS` - emits the actual type definitions (struct/union/enum).
+- `REFLECTC_WRAPPER` + `REFLECTC_HEADER` - declares `reflectc_from_<type>` functions and lookup enums for static access.
+- `REFLECTC_WRAPPER` + `REFLECTC_FORWARD` - produces forward declarations for nested types.
+- `REFLECTC_WRAPPER` - emits the implementation of `reflectc_from_<type>`.
 
 You rarely need to gate on these macros manually, but it is useful when a recipe should only emit specific statements in certain passes.
 

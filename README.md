@@ -4,11 +4,11 @@ Reflection-friendly data describes complex C types without hand-written metadata
 
 ## Highlights
 
-- **Zero-cost metadata** – generation happens at build time, no runtime parsing.
-- **Struct/union/enum coverage** – handles nesting, pointers, arrays, and qualifiers.
-- **Runtime helpers** – walk members, compute pointer depth, copy values, or allocate arrays through a uniform API.
-- **Battle-tested** – JSON round-trip examples and unit tests validate the generated metadata.
-- **Self-contained** – depends only on the standard library and your recipes.
+- **Zero-cost metadata** - generation happens at build time, no runtime parsing.
+- **Struct/union/enum coverage** - handles nesting, pointers, arrays, and qualifiers.
+- **Runtime helpers** - walk members, compute pointer depth, copy values, or allocate arrays through a uniform API.
+- **Battle-tested** - JSON round-trip examples and unit tests validate the generated metadata.
+- **Self-contained** - depends only on the standard library and your recipes.
 
 ## How the toolchain works
 
@@ -16,10 +16,10 @@ Reflection-friendly data describes complex C types without hand-written metadata
 
 Reflect-C relies on *recipes*—header fragments that describe your types using a macro DSL. The build system performs four stages:
 
-1. **Collect recipes** – you list your `.PRE.h` recipe files (defaults live under `api/`).
-2. **Expand directives** – `reflect-c_EXPAND_COMMENTS` converts special `/*#! ... */` directives into active code before preprocessing.
-3. **Preprocess with roles** – `reflect-c_RECIPES.PRE.h` pulls in every recipe multiple times with different `REFLECTC_*` flags to emit actual C definitions, lookup tables, and wrapper functions.
-4. **Emit amalgamated sources** – the helper makefile `reflect-c.mk` produces `reflect-c_GENERATED.h/.c` alongside an optional static library `libreflectc.a` for the runtime helpers in `reflect-c.c`.
+1. **Collect recipes** - you list your `.PRE.h` recipe files (defaults live under `api/`).
+2. **Expand directives** - `reflect-c_EXPAND_COMMENTS` converts special `/*#! ... */` directives into active code before preprocessing.
+3. **Preprocess with roles** - `reflect-c_RECIPES.PRE.h` pulls in every recipe multiple times with different `REFLECTC_*` flags to emit actual C definitions, lookup tables, and wrapper functions.
+4. **Emit amalgamated sources** - the helper makefile `reflect-c.mk` produces `reflect-c_GENERATED.h/.c` alongside an optional static library `libreflectc.a` for the runtime helpers in `reflect-c.c`.
 
 The pipeline is intentionally pure-C, so the same commands work on any system with an ANSI C compiler.
 
@@ -105,10 +105,10 @@ where `container_kind` is `struct`, `union`, or `enum`. Member tuples differ sli
 
 Special columns:
 
-- **Qualifier** – `const`, `volatile`, or `_` for none.
-- **Container** – `struct`, `union`, or `_` for plain arithmetic types.
-- **Decorator** – pointer depth (`*`, `**`) or `_` for scalars.
-- **Dimensions** – array declarators (e.g., `[4]`).
+- **Qualifier** - `const`, `volatile`, or `_` for none.
+- **Container** - `struct`, `union`, or `_` for plain arithmetic types.
+- **Decorator** - pointer depth (`*`, `**`) or `_` for scalars.
+- **Dimensions** - array declarators (e.g., `[4]`).
 
 During generation the recipes are replayed under different macros: once to emit actual C definitions, once to create lookup enums, once to build metadata tables, and finally to emit constructor functions (`reflectc_from_<type>`).
 
@@ -206,17 +206,25 @@ These snippets, plus additional walkthroughs, are collected in [docs/examples.md
 
 ## Building, testing, and integrating
 
-- **Build metadata and library** – `make gen` (default compiler is `cc`).
-- **Debug builds** – `make debug-gen` keeps debug symbols in the generated library and runtime.
-- **Clean artifacts** – `make clean` removes generated files, `make purge` also removes the static library.
-- **Run unit tests** – `make -C test` builds the test harness, then run `./test/test`.
+- **Build metadata and library** - `make gen` (default compiler is `cc`).
+- **Debug builds** - `make debug-gen` keeps debug symbols in the generated library and runtime.
+- **Clean artifacts** - `make clean` removes generated files, `make purge` also removes the static library.
+- **Run unit tests** - `make -C test` builds the test harness, then run `./test/test`.
 
-To use Reflect-C in another project you can either:
+### Integrating into another project
 
-1. Vendor the repository and call `make gen` as part of your build, or
-2. Invoke `reflect-c.mk` from your own build system by providing `OUT_NO_EXT`, `DFLAGS`, `HEADERS`, and (optionally) `TEMPFILE` variables.
+1. **Vendor the sources** - add this repository as a submodule or copy `reflect-c/` into `third_party/reflect-c` (any location works as long as your build can reach the files).
+2. **Author your recipes** - place your own `.PRE.h` files (e.g., `recipes/player.PRE.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and include supporting headers inside the `/*#! ... */` blocks.
+3. **Generate metadata during your build** - invoke the helper makefile with your recipe directory and desired output stem. For example:
 
-Include the generated `reflect-c_GENERATED.h` (and `.c` if you keep it separate) alongside `reflect-c.h` and link against `libreflectc.a` or compile `reflect-c.c` directly into your application.
+   ```sh
+   make -C third_party/reflect-c API_DIR=../app/recipes OUT=app_reflect gen
+   ```
+
+   This produces `app_reflect.c`, `app_reflect.h`, and `app_reflect.o` alongside the runtime library. For CMake, Meson, or others, wrap that command in a custom build step so it re-runs when recipes change.
+4. **Compile and link** - add the generated `.c` (or `.o`) plus `reflect-c.c` to your project, or simply link against the provided `libreflectc.a`. Ensure your compiler’s include path covers both `reflect-c.h` and the generated header.
+5. **Use the helpers at runtime** - include the headers, call `reflectc_from_<type>` to wrap your instances, and interact with fields via `reflectc_get_pos_fast`, `reflectc_get_member`, or the other API functions described above. Free wrappers with `free` when done.
+6. **Optional polish** - commit generated files if you need deterministic builds without the generator present, or extend the emitted enum range by adding typedefs and enums mapped to `REFLECTC_TYPES__EXTEND` within your recipes.
 
 ## Project structure
 
@@ -232,11 +240,11 @@ reflect-c/
 
 ## Limitations & FAQ
 
-- **Memory ownership** – `reflectc_from_*` allocates wrapper trees with `malloc`. Free them with `free` when done.
-- **Bitfields/variadic arrays** – not supported today; stick to plain declarators.
-- **Pointer depth heuristics** – `reflectc_deref` dereferences multi-level pointers once for convenience. Override by calling `reflectc_get_member` directly.
-- **Custom allocators** – the runtime uses `malloc`/`calloc`/`realloc`. Swap in your own versions before linking if you need arena integration.
-- **Compiler support** – tested with ANSI C (C89) compliant compilers. Newer language features (designated initializers, `_Static_assert`) are not assumed.
+- **Memory ownership** - `reflectc_from_*` allocates wrapper trees with `malloc`. Free them with `free` when done.
+- **Bitfields/variadic arrays** - not supported today; stick to plain declarators.
+- **Pointer depth heuristics** - `reflectc_deref` dereferences multi-level pointers once for convenience. Override by calling `reflectc_get_member` directly.
+- **Custom allocators** - the runtime uses `malloc`/`calloc`/`realloc`. Swap in your own versions before linking if you need arena integration.
+- **Compiler support** - tested with ANSI C (C89) compliant compilers. Newer language features (designated initializers, `_Static_assert`) are not assumed.
 
 ## Contributing
 

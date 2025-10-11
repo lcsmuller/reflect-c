@@ -8,13 +8,13 @@ The runtime half of Reflect-C lives in `reflect-c.h` and `reflect-c.c`. It provi
 
 Immutable view of a type member. Key fields:
 
-- `size` – size in bytes of the *declared* type.
-- `qualifier`, `decorator`, `name`, `dimensions` – string slices describing the original declaration. Empty fields carry `length == 0`.
-- `type` – `enum reflectc_types` value identifying the category (`REFLECTC_TYPES__int`, `REFLECTC_TYPES__struct`, ...).
-- `length` – number of elements covered by this node. For scalars it is `1`; for arrays it is expanded on demand.
-- `ptr_value` – pointer to the underlying data (may be `NULL` for optional pointers).
-- `members` – nested reflection nodes when `type` is `struct` or `union`.
-- `from_cb` – callback used to hydrate nested nodes on demand.
+- `size` - size in bytes of the *declared* type.
+- `qualifier`, `decorator`, `name`, `dimensions` - string slices describing the original declaration. Empty fields carry `length == 0`.
+- `type` - `enum reflectc_types` value identifying the category (`REFLECTC_TYPES__int`, `REFLECTC_TYPES__struct`, ...).
+- `length` - number of elements covered by this node. For scalars it is `1`; for arrays it is expanded on demand.
+- `ptr_value` - pointer to the underlying data (may be `NULL` for optional pointers).
+- `members` - nested reflection nodes when `type` is `struct` or `union`.
+- `from_cb` - callback used to hydrate nested nodes on demand.
 
 The mutable counterpart `struct reflectc_mut` shares the same layout but allows the generator to populate fields.
 
