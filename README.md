@@ -1,181 +1,205 @@
 # Reflect-C
 
-A library that adds reflection capabilities to C structs through code generation.
+Reflection-friendly data describes complex C types without hand-written metadata. **Reflect-C** generates that metadata for you at compile time, so you can explore, serialize, or mutate structs, unions, and enums from generic code while staying within portable ANSI C.
 
-## Features
-- Zero runtime overhead with metadata generated at compile time
-- Struct member introspection and manipulation
-- Support for nested structs, unions, and enums
-- Pointer handling with automatic dereferencing
-- Member type validation and safety
-- Support for member decorators (qualifiers, pointers, arrays)
-- Compatible with C89/ANSI C
-- No external dependencies
-- Easily integrate with JSON serialization/deserialization
+## Highlights
 
-## Installation
+- ⚙️ **Zero-cost metadata** – generation happens at build time, no runtime parsing.
+- 🧱 **Struct/union/enum coverage** – handles nesting, pointers, arrays, and qualifiers.
+- 🧭 **Runtime helpers** – walk members, compute pointer depth, copy values, or allocate arrays through a uniform API.
+- 🧪 **Battle-tested** – JSON round-trip examples and unit tests validate the generated metadata.
+- 📦 **Self-contained** – depends only on the standard library and your recipes.
 
-Clone the repository:
+## How the toolchain works
 
-```bash
-git clone https://github.com/lcsmuller/reflect-c.git
-cd reflect-c
-```
+Reflect-C relies on *recipes*—header fragments that describe your types using a macro DSL. The build system performs four stages:
 
-The library is header-only, so you can simply include it in your project.
+1. **Collect recipes** – you list your `.PRE.h` recipe files (defaults live under `api/`).
+2. **Expand directives** – `reflect-c_EXPAND_COMMENTS` converts special `/*#! ... */` directives into active code before preprocessing.
+3. **Preprocess with roles** – `reflect-c_RECIPES.PRE.h` pulls in every recipe multiple times with different `REFLECTC_*` flags to emit actual C definitions, lookup tables, and wrapper functions.
+4. **Emit amalgamated sources** – the helper makefile `reflect-c.mk` produces `reflect-c_GENERATED.h/.c` alongside an optional static library `libreflectc.a` for the runtime helpers in `reflect-c.c`.
 
-## Basic Usage
+The pipeline is intentionally pure-C (no Python/Rust helpers), so the same commands work on any system with an ANSI C compiler.
 
-1. Define your structures with reflection capabilities using the `PUBLIC` or `PRIVATE` macros:
+## Quick start
+
+1. **Clone and build the generator tools.**
+
+   ```sh
+   git clone https://github.com/lcsmuller/reflect-c.git
+   cd reflect-c
+   make gen
+   ```
+
+   This compiles `reflect-c_EXPAND_COMMENTS`, builds the runtime library, and generates amalgamated sources from the sample recipes under `api/`.
+
+1. **Describe your types in a recipe.** Recipes are thin macro invocations that stay valid headers. Place a file like `api/person.PRE.h` in the repository:
+
+   ```c
+   /* person.PRE.h */
+   #ifdef REFLECTC_DEFINITIONS
+   /*#!
+   #include <stdbool.h>
+   */
+   #endif
+
+   PUBLIC(struct, person, 4, (
+       (_, _, char, *, name, _),
+       (_, _, int, _, age, _),
+       (_, _, bool, _, active, _),
+       (_, _, char, *, email, _)
+   ))
+   ```
+
+   A few macros worth knowing (see [Recipe syntax](#recipe-syntax) for details):
+
+   - `PUBLIC` / `PRIVATE` chooses whether the generated symbols are exported.
+   - Tuple columns encode qualifier, container (`struct`, `union`, `enum`), raw type, pointer decoration, member name, and array dimensions.
+   - `/*#! ... */` directives become active during generation but remain comments in normal compilation units.
+
+1. **Regenerate metadata.**
+
+   ```sh
+   make gen            # rebuilds reflect-c_GENERATED.c/h from all recipes
+   ```
+
+1. **Use the runtime API.**
+
+   ```c
+   #include "reflect-c.h"
+   #include "reflect-c_GENERATED.h"
+
+   int main(void) {
+       struct person alice = {"Alice", 30, true, "alice@example.com"};
+       struct reflectc *r = reflectc_from_person(&alice, NULL);
+
+       /* Fast indexed access via generated enums */
+       size_t name_pos = reflectc_get_pos_fast(struct, person, name, r);
+       const char *name = reflectc_get_member(r, name_pos);
+
+       printf("%s is %d years old\n",
+              name,
+              *(int *)reflectc_get_member(r, reflectc_get_pos_fast(struct, person, age, r)));
+
+       free(r); /* You own the wrapper memory */
+       return 0;
+   }
+   ```
+
+## Recipe syntax
+
+Recipes live in `.PRE.h` files that can be included safely in regular code. Each entry is a macro of the shape
 
 ```c
-// my_types.PRE.h
-#ifdef REFLECTC_DEFINITIONS
-/*#!
-#include <stdbool.h>
-*/
-#endif
-
-PUBLIC(struct, person, 4, (
-    (_, _, char, *, name, _),
-    (_, _, int, _, age, _),
-    (_, _, bool, _, active, _),
-    (_, _, char, *, email, _)
-))
+PUBLIC(container_kind, type_name, member_count, (members...))
 ```
 
-2. Generate the reflection code:
+where `container_kind` is `struct`, `union`, or `enum`. Member tuples differ slightly depending on the container:
 
-```bash
-# Using your preferred method to run the code generator
-./reflect-c-gen my_types.PRE.h
+| Container | Tuple signature | Example |
+| --- | --- | --- |
+| `struct` / `union` | `(qualifier, container, type, decorator, name, dimensions)` | `(_, _, char, *, name, [32])` |
+| `enum` | `(enumerator, assignment_op, value)` | `(LEVEL_ONE, =, 1)` |
+
+Special columns:
+
+- **Qualifier** – `const`, `volatile`, or `_` for none.
+- **Container** – `struct`, `union`, or `_` for plain arithmetic types.
+- **Decorator** – pointer depth (`*`, `**`) or `_` for scalars.
+- **Dimensions** – array declarators (e.g., `[4]`).
+
+During generation the recipes are replayed under different macros: once to emit actual C definitions, once to create lookup enums, once to build metadata tables, and finally to emit constructor functions (`reflectc_from_<type>`).
+
+For an exhaustive walkthrough see [docs/recipe-format.md](docs/recipe-format.md).
+
+## Runtime API highlights
+
+The runtime layer (`reflect-c.h` / `reflect-c.c`) manages metadata trees produced by the generator.
+
+| Function | Purpose |
+| --- | --- |
+| `struct reflectc *reflectc_from_<type>(<type> *self, struct reflectc *reuse)` | Materialize metadata for an instance. Pass `NULL` to allocate a fresh tree or reuse an existing buffer for arrays. |
+| `size_t reflectc_length(const struct reflectc *member)` | Compute the effective length, expanding array dimensions on demand. |
+| `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Lookup a member by string at runtime. |
+| `reflectc_get_pos_fast(struct, type, field, root)` | Generated macro returning a compile-time index for a field. |
+| `const void *reflectc_get_member(...)` | Dereference the pointer to a member inside the wrapped object with bounds checking. |
+| `const void *reflectc_deref(const struct reflectc *field)` | Resolve multi-level pointers and array declarators to the "natural" pointed-to object. |
+| `const void *reflectc_set(...)` / `reflectc_memcpy` | Copy data into a member, with size guards. |
+| `const char *reflectc_string(...)` | Copy string data into pointer fields, allocating storage when needed. |
+| `void reflectc_array(const struct reflectc *root, size_t length)` | Resize metadata for treated-as-array members (e.g., JSON arrays). |
+
+All wrappers share the same layout defined in `struct reflectc` so tooling can walk types generically.
+
+## Examples
+
+### JSON serialization/deserialization
+
+`test/test.c` demonstrates a full round-trip using [JSON-Build](json-build/) and `jsmn-find`. The reflection metadata drives both the serializer and parser, including pointer depth detection for `NULL` handling. Run it with:
+
+```sh
+make -C test
+./test/test
 ```
 
-3. Include the generated headers in your code:
+### Iterating members generically
 
 ```c
-#include "reflect-c.h"
-#include "reflect-c_GENERATED.h"
-
-int main() {
-    struct person p = {"John Doe", 30, true, "john@example.com"};
-
-    // Create a reflection wrapper for the person struct
-    struct reflectc *r_person = reflectc_from_person(&p, NULL);
-
-    // Access members statically (fast access)
-    char *name_member = (char *)reflectc_get_fast(person, name, r_person);
-    printf("Name: %s\n", name_member);
-    // Access members dynamically (using string names)
-    char *email_member = (char *)reflectc_get(r_person, "email", strlen("email"));
-    printf("Email: %s\n", name_member);
-
-    // Clean up
-    reflectc_free(r_person);
-    return 0;
+struct reflectc *wrapper = reflectc_from_baz(&baz, NULL);
+for (size_t i = 0; i < wrapper->members.length; ++i) {
+    const struct reflectc *field = &wrapper->members.array[i];
+    printf("%.*s -> size %zu\n", (int)field->name.length, field->name.buf, field->size);
 }
+free(wrapper);
 ```
 
-## Example: JSON Serialization
-
-The library can be easily used for JSON serialization, as demonstrated in the test code:
+### Editing nested structures
 
 ```c
-#include <stdio.h>
-#include <stdbool.h>
-#include "json-build/json-build.h"
-#include "reflect-c.h"
-#include "reflect-c_GENERATED.h"
-
-void json_stringify(struct jsonb *jb, const struct reflectc *member,
-                   char buf[], const size_t bufsize)
-{
-    if (member->decorator.len && member->ptr_value == NULL) {
-        jsonb_null(jb, buf, bufsize);
-        return;
-    }
-
-    switch (member->type) {
-    case REFLECTC_TYPES__char:
-        jsonb_string(jb, buf, bufsize, member->ptr_value, strlen(member->ptr_value));
-        break;
-    case REFLECTC_TYPES__int:
-        jsonb_number(jb, buf, bufsize, *(int *)member->ptr_value);
-        break;
-    case REFLECTC_TYPES__bool:
-        jsonb_bool(jb, buf, bufsize, *(bool *)member->ptr_value);
-        break;
-    case REFLECTC_TYPES__float:
-        jsonb_number(jb, buf, bufsize, *(float *)member->ptr_value);
-        break;
-    case REFLECTC_TYPES__struct: {
-        jsonb_object(jb, buf, bufsize);
-        for (size_t i = 0; i < member->members.len; ++i) {
-            const struct reflectc *f = &member->members.array[i];
-            jsonb_key(jb, buf, bufsize, f->name.buf, f->name.len);
-            json_stringify(jb, f, buf, bufsize);
-        }
-        jsonb_object_pop(jb, buf, bufsize);
-    } break;
-    default:
-        break;
-    }
-}
-
-int main() {
-    // Create a sample struct
-    struct bar a = { true, 42, "hello world" }, *aa = &a, **aaa = &aa;
-    struct baz baz = { &a, &a, &aaa, "hello world" };
-
-    // Create a reflection wrapper
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
-
-    // Serialize to JSON
-    char json[1024] = {0};
-    struct jsonb jb;
-    jsonb_init(&jb);
-    json_stringify(&jb, wrapped_baz, json, sizeof(json));
-
-    printf("JSON: %s\n", json);
-    // Output: {"a":{"boolean":true,"number":42,"string":"hello world"},...}
-
-    // Clean up
-    reflectc_free(wrapped_baz);
-    return 0;
-}
+size_t number_pos = reflectc_get_pos_fast(struct, bar, number, bar_ref);
+int new_value = 1337;
+reflectc_set_member(bar_ref, number_pos, &new_value, sizeof new_value);
 ```
 
-## API Reference
+These snippets, plus additional walkthroughs, are collected in [docs/examples.md](docs/examples.md).
 
-### Core Macros
+## Building, testing, and integrating
 
-- `PUBLIC(container_type, name, member_count, members_tuple)`: Defines a public struct/enum/union with reflection
-- `PRIVATE(container_type, name, member_count, members_tuple)`: Defines a private struct/enum/union with reflection
+- **Build metadata and library** – `make gen` (default compiler is `cc`).
+- **Debug builds** – `make debug-gen` keeps debug symbols in the generated library and runtime.
+- **Clean artifacts** – `make clean` removes generated files, `make purge` also removes the static library.
+- **Run unit tests** – `make -C test` builds the test harness, then run `./test/test`.
 
-### Member Definition
+To use Reflect-C in another project you can either:
 
-Members are defined as tuples with the following format:
-- For struct/union members: `(qualifier, container, type, decorator, name, dimensions)`
-- For enum members: `(enumerator, assignment_op, value)`
+1. Vendor the repository and call `make gen` as part of your build, or
+2. Invoke `reflect-c.mk` from your own build system by providing `OUT_NO_EXT`, `DFLAGS`, `HEADERS`, and (optionally) `TEMPFILE` variables.
 
-### Generated Functions
+Include the generated `reflect-c_GENERATED.h` (and `.c` if you keep it separate) alongside `reflect-c.h` and link against `libreflectc.a` or compile `reflect-c.c` directly into your application.
 
-For each reflected type `foo`, these functions are generated:
-- `reflectc_from_foo(foo *self, struct reflectc *root)`: Creates reflection data for a foo instance
+## Project structure
 
-### Core Types
+```text
+reflect-c/
+├── recipes/                # Core macro recipes that drive generation
+├── api/                    # (create this) your application-specific recipes
+├── reflect-c.c/.h          # Runtime helpers shared by all generated wrappers
+├── reflect-c.mk            # Build helper invoked by `make gen`
+├── docs/                   # Supplemental documentation (plan, recipe syntax, examples)
+└── test/                   # JSON demo and integration tests using Greatest
+```
 
-- `struct reflectc`: Holds reflection metadata for a struct member
-  - `size_t size`: Size of the type in bytes
-  - `struct { const char *buf; size_t len } qualifier`: Member qualifier
-  - `struct { const char *buf; size_t len } decorator`: Member decorator (* for pointers)
-  - `struct { const char *buf; size_t len } name`: Member name
-  - `struct { const char *buf; size_t len } dimensions`: Member dimensions (for arrays)
-  - `enum reflectc_types type`: Member type
-  - `void *ptr_value`: Pointer to the actual value
-  - `struct { struct reflectc *array; size_t len } members`: Nested members (for structs/unions)
-  - `reflectc_from_cb from_cb`: Callback for generating child reflectc objects
+## Limitations & FAQ
+
+- **Memory ownership** – `reflectc_from_*` allocates wrapper trees with `malloc`. Free them with `free` when done.
+- **Bitfields/variadic arrays** – not supported today; stick to plain declarators.
+- **Pointer depth heuristics** – `reflectc_deref` dereferences multi-level pointers once for convenience. Override by calling `reflectc_get_member` directly.
+- **Custom allocators** – the runtime uses `malloc`/`calloc`/`realloc`. Swap in your own versions before linking if you need arena integration.
+- **Compiler support** – tested with ANSI C (C89) compliant compilers. Newer language features (designated initializers, `_Static_assert`) are not assumed.
+
+## Contributing
+
+Bug reports, recipe ideas, and documentation PRs are welcome! Please run `make gen` and `make -C test` before submitting.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Distributed under the MIT License. See `LICENSE` for details.
