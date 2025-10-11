@@ -337,6 +337,53 @@ check_resolve_null_chain(void)
 }
 
 TEST
+check_extended_type_metadata(void)
+{
+    struct hooks sample = { 21, true, (size_t)512, (unsigned long)7 };
+    struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
+    size_t words_pos = reflectc_get_pos_fast(struct, hooks, words, wrapper);
+    const struct reflectc *words_member = &wrapper->members.array[words_pos];
+    const reflectc_words_t *words_ptr =
+        reflectc_get_member(wrapper, words_pos);
+    size_t numbers_pos =
+        reflectc_get_pos_fast(struct, hooks, numbers, wrapper);
+    const struct reflectc *numbers_member =
+        &wrapper->members.array[numbers_pos];
+    const reflectc_numbers_t *numbers_ptr =
+        reflectc_get_member(wrapper, numbers_pos);
+
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_words_t,
+              words_member->type);
+    ASSERT_EQ(sizeof(reflectc_words_t), words_member->size);
+    ASSERT_NEQ(NULL, words_ptr);
+    ASSERT_EQ(sample.words, *words_ptr);
+
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_numbers_t,
+              numbers_member->type);
+    ASSERT_EQ(sizeof(reflectc_numbers_t), numbers_member->size);
+    ASSERT_NEQ(NULL, numbers_ptr);
+    ASSERT_EQ(sample.numbers, *numbers_ptr);
+
+    reflectc_from_hooks(NULL, wrapper);
+    words_member = &wrapper->members.array[words_pos];
+    words_ptr = reflectc_get_member(wrapper, words_pos);
+    ASSERT_NEQ(NULL, words_member);
+    ASSERT_NEQ(NULL, words_ptr);
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_words_t,
+              words_member->type);
+
+    numbers_member = &wrapper->members.array[numbers_pos];
+    numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
+    ASSERT_NEQ(NULL, numbers_member);
+    ASSERT_NEQ(NULL, numbers_ptr);
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_numbers_t,
+              numbers_member->type);
+
+    free(wrapper);
+    PASS();
+}
+
+TEST
 check_loop_through(void)
 {
     struct bar a, b, c, *cc = &c, **ccc = &cc;
@@ -380,6 +427,7 @@ SUITE(wrapper)
     RUN_TEST(check_json_parser);
     RUN_TEST(check_resolve_and_expand);
     RUN_TEST(check_resolve_null_chain);
+    RUN_TEST(check_extended_type_metadata);
     RUN_TEST(check_loop_through);
     RUN_TEST(check_array);
 }

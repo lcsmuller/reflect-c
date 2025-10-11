@@ -63,3 +63,13 @@ The returned pointer is allocated with `calloc`/`malloc`. Call `free()` on the o
 - The generator populates `from_cb` with child constructors for nested structs/unions. You can override `from_cb` manually for custom hydration logic.
 - To integrate with custom allocators, link against replacements for `malloc`, `calloc`, `realloc`, and `free`, or wrap constructor calls behind your own allocation layer.
 - Additional utility helpers (e.g., typed getters/setters) can be layered on top using the raw operations above without modifying generated code.
+Need to describe custom scalars? Drop an enum alongside your typedefs:
+
+```c
+enum reflectc_custom_types {
+    REFLECTC_TYPES__reflectc_words_t = REFLECTC_TYPES__EXTEND,
+    REFLECTC_TYPES__reflectc_numbers_t,
+};
+```
+
+Because enumerators live in the same namespace, generated metadata for those typedefs reports `type == REFLECTC_TYPES__reflectc_words_t` (or whichever alias you introduce), giving your runtime a stable tag for project-specific primitives while keeping the core generator untouched.

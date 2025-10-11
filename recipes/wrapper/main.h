@@ -42,12 +42,14 @@ _from_noop(void *self, struct reflectc *root)
                       _name, _dimensions)                                     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            REFLECTC_TYPES__##_type, 0, NULL, { 0, NULL }, _from_noop },
+            (enum reflectc_types)(REFLECTC_TYPES__##_type), 0, NULL,          \
+            { 0, NULL }, _from_noop },
 #define _pick_member_container(_namespace, _qualifier, _container, _type,     \
                               _decorator, _name, _dimensions)                 \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            REFLECTC_TYPES__##_container, 0, NULL, { 0, NULL },               \
+            (enum reflectc_types)(REFLECTC_TYPES__##_container), 0, NULL,     \
+            { 0, NULL },                                                     \
 /*#! #ifdef */ REFLECTC_DEFINED##__##_type /*#! */                            \
             (reflectc_from_cb)reflectc_from_##_type                           \
 /*#! #else */ /*#! */                                                         \
@@ -62,7 +64,8 @@ _from_noop(void *self, struct reflectc *root)
     static const struct reflectc _type##__root =                              \
         { sizeof(_container _type), { NULL, 0 }, { NULL, 0 },                 \
             { #_type, sizeof(#_type) - 1 }, { NULL, 0 },                      \
-            REFLECTC_TYPES__##_container, 0, NULL, { 0, NULL },               \
+            (enum reflectc_types)(REFLECTC_TYPES__##_container), 0, NULL,     \
+            { 0, NULL },                                                     \
             (reflectc_from_cb)reflectc_from_##_type };
 
 #define REFLECTC_PUBLIC  1

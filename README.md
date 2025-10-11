@@ -162,6 +162,46 @@ int new_value = 1337;
 reflectc_set_member(bar_ref, number_pos, &new_value, sizeof new_value);
 ```
 
+### Extending scalar tags
+
+```c
+/* hooks.PRE.h */
+#ifdef REFLECTC_DEFINITIONS
+/*#!
+#include <stdbool.h>
+#include <stddef.h>
+typedef size_t reflectc_words_t;
+typedef unsigned long reflectc_numbers_t;
+enum reflectc_custom_types {
+   REFLECTC_TYPES__reflectc_words_t = REFLECTC_TYPES__EXTEND,
+   REFLECTC_TYPES__reflectc_numbers_t,
+};
+*/
+#endif
+
+PUBLIC(struct, hooks, 4, (
+   (_, _, int, _, value, _),
+   (_, _, bool, _, flag, _),
+   (_, _, reflectc_words_t, _, words, _),
+   (_, _, reflectc_numbers_t, _, numbers, _)
+))
+```
+
+At runtime the custom members resolve to the new enum values:
+
+```c
+struct hooks sample = {21, true, 512u, 7ul};
+struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
+size_t words_pos = reflectc_get_pos_fast(struct, hooks, words, wrapper);
+const struct reflectc *words = &wrapper->members.array[words_pos];
+
+if (words->type == (enum reflectc_types)REFLECTC_TYPES__reflectc_words_t) {
+   printf("words: %zu\n", *(reflectc_words_t *)reflectc_get_member(wrapper, words_pos));
+}
+
+free(wrapper);
+```
+
 These snippets, plus additional walkthroughs, are collected in [docs/examples.md](docs/examples.md).
 
 ## Building, testing, and integrating
