@@ -128,6 +128,21 @@ Use `/*#! ... */` directives whenever you need to:
 
 If you're writing scripts or tools that generate recipes programmatically, always emit `/*#! ... */` directives around any `#include` or `#define` statements. This is the contract that ensures your generated recipes will work with Reflect-C's preprocessor pipeline.
 
+### Known Limitation: Backslashes in Comments
+
+**Do not use backslash (`\`) characters inside `/*#! ... */` comment blocks.** The C preprocessor expands backslashes for line continuation regardless of whether they appear inside comments, which can cause issues during Reflect-C's post-expansion processing.
+
+For example, this will cause problems:
+
+```c
+/*#!
+#define MESSAGE "hello \
+world"
+*/
+```
+
+The preprocessor will join the lines before Reflect-C processes the comment, potentially leading to malformed output. Keep all content within `/*#! ... */` blocks on single lines, or avoid using backslashes for line continuation.
+
 ## Replayed Roles
 
 The generator includes every recipe multiple times by setting these flags:
