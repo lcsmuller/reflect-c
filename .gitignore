@@ -26,3 +26,5 @@
 !core
 !core/*.c
 !core/*.h
+!tools
+!tools/*.c

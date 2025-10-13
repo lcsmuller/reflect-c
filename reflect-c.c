@@ -249,7 +249,8 @@ reflectc_array(const struct reflectc *root, const size_t length)
             return;
         }
         mut_root = tmp;
-        for (i = reflectc_length(root); i < length; ++i) {
+        for (i = reflectc_length((struct reflectc *)mut_root); i < length; ++i)
+        {
             memcpy(mut_root + i, &mut_root[0], sizeof *mut_root);
             mut_root[i].ptr_value = NULL;
             mut_root[i].length = length - i;

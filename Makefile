@@ -1,4 +1,5 @@
-OBJS      = reflect-c.o
+OBJS = reflect-c.o
+CC   = cc
 
 # Resulting library
 LIB_NO_EXT = libreflectc
@@ -20,6 +21,9 @@ TEMPFILE        = reflect-c_GENERATED.PRE.h
 TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.PRE.h); for header in $$headers; do echo "\#include \"$$header\"" >> $(TEMPFILE); done
 # Build reflect-c.mk with the correct variables
 BUILD = $(MAKE) OUT_NO_EXT=$(OUT) DFLAGS="$(DFLAGS)" -f reflect-c.mk
+
+REFLECTC_TUPLE_MAX = 16
+TOOLS_DIR          = tools
 
 all: $(ARLIB)
 
@@ -47,10 +51,20 @@ echo:
 	@ echo 'API_DIR: $(API_DIR)'
 	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
+$(TOOLS_DIR):
+	mkdir -p $(TOOLS_DIR)
+
+$(TOOLS_DIR)/gen_tuples: $(TOOLS_DIR)/gen_tuples.c | $(TOOLS_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+tuples: $(TOOLS_DIR)/gen_tuples
+	@echo "Generating reflect-c_TUPLE.h with MAX=$(REFLECTC_TUPLE_MAX)"
+	@./$(TOOLS_DIR)/gen_tuples $(REFLECTC_TUPLE_MAX) > reflect-c_TUPLE.h
+
 clean:
 	@ rm -f $(TEMPFILE) $(OBJS) $(ARLIB)
 	$(BUILD) $@
 
 purge: clean
 
-.PHONY: all gen debug debug-gen headers echo clean purge
+.PHONY: all gen debug debug-gen headers echo clean purge tuples
