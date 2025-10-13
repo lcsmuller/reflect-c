@@ -233,8 +233,26 @@ Commit the regenerated header if you want downstream builds to avoid running the
 
 ### Integrating into another project
 
-1. **Vendor the sources** - add this repository as a submodule or copy `reflect-c/` into `third_party/reflect-c` (any location works as long as your build can reach the files).
-2. **Author your recipes** - place your own `.PRE.h` files (e.g., `recipes/player.PRE.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and **wrap any `#include` or `#define` directives inside `/*#! ... */` blocks** so the generator can activate them during preprocessing.
+1. **Vendor the sources (recommended: Git subtree)**
+
+    Use Git subtree to vendor this repository into your project without submodule friction.
+
+    - Add the upstream remote and create the subtree under `third_party/reflect-c`:
+
+       ```sh
+       git remote add reflect-c https://github.com/lcsmuller/reflect-c.git
+       git subtree add --prefix=third_party/reflect-c reflect-c master --squash
+       ```
+
+    - Update later to pull new changes from upstream:
+
+       ```sh
+       git fetch reflect-c
+       git subtree pull --prefix=third_party/reflect-c reflect-c master --squash
+       ```
+
+    Alternatively, you can copy `reflect-c/` into `third_party/reflect-c` (any location works as long as your build can reach the files).
+2. **Author your recipes** - place your own `.PRE.h` files (e.g., `recipes/player.PRE.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and include supporting headers inside the `/*#! ... */` blocks.
 3. **Generate metadata during your build** - invoke the helper makefile with your recipe directory and desired output stem. For example:
 
    ```sh
