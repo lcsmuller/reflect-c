@@ -13,7 +13,6 @@ RECIPES_NO_EXT_EXPAND = "$$(echo $(RECIPES) | sed -e 's/\.PRE\.h//')"
 # Resulting single-file amalgamations after preprocessing input file
 OUT_C  = $(OUT_NO_EXT).c
 OUT_H  = $(OUT_NO_EXT).h
-OUT_O  = $(OUT_NO_EXT).o
 
 CFLAGS   ?= -O2
 CFLAGS   += -I. -Wall -Wextra -Wpedantic -std=c89
@@ -26,15 +25,7 @@ HEADER_TAG_EXPAND   = "$$(echo '$<' | sed -e 's/\(.*\)\.PRE.h/\1/' | sed -e 's/\
 # Doxygen file description
 DOXYGEN_DESC_EXPAND = "/**\n * @file $@\n * @author Reflect-C\n * @brief Reflect-C generated code\n */\n"
 
-all: $(OUT_O)
-
-$(OUT_O): $(OUT_C) $(OUT_H)
-	@ echo "Creating $@"
-	$(CC) -c $(CFLAGS) $< -o $@
-
-.c.o:
-	@ echo "Creating $@"
-	$(CC) -c $(CFLAGS) $< -o $@
+all: $(OUT_C) $(OUT_H)
 
 $(EXPAND_COMMENTS):
 	$(CC) $(CFLAGS) $@.c -o $@
@@ -71,11 +62,10 @@ echo:
 	@ echo 'RECIPES_NO_EXT: $(RECIPES_NO_EXT)'
 	@ echo 'OUT_H: $(OUT_H)'
 	@ echo 'OUT_C: $(OUT_C)'
-	@ echo 'OUT_O: $(OUT_O)'
 	@ echo 'HEADERS: $(HEADERS)'
 
 clean:
-	@ rm -f $(OUT_H) $(OUT_C) $(OUT_O)
+	@ rm -f $(OUT_H) $(OUT_C)
 	@ rm -f $(HEADERS) $(EXPAND_COMMENTS)
 
 .PHONY: headers clean
