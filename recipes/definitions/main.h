@@ -62,7 +62,7 @@
     enum {
 #define _pick_member(_namespace, _qualifier, _container, _type, _decorator,   \
                     _name, _dimensions)                                       \
-        __REFLECTC_LOOKUP__##_namespace##_##_name##__,
+        __REFLECTC_LOOKUP__##_namespace##__##_name##__,
 #define _pick_container_end(_namespace)                                       \
         __REFLECTC_LOOKUP__##_namespace##_MAX__                               \
     };

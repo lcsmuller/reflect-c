@@ -59,7 +59,7 @@ size_t reflectc_get_pos(const struct reflectc *root,
 void reflectc_array(const struct reflectc *root, const size_t length);
 
 #define reflectc_get_pos_fast(_container, _namespace, _member_name, _root)    \
-    (size_t)(__REFLECTC_LOOKUP__##_namespace##_##_member_name##__)
+    (size_t)(__REFLECTC_LOOKUP__##_namespace##__##_member_name##__)
 
 unsigned reflectc_get_pointer_depth(const struct reflectc *member);
 
