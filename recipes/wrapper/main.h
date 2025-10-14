@@ -58,6 +58,12 @@ _from_noop(void *self, struct reflectc *root)
          },
 #define _pick_member_struct _pick_member_container
 #define _pick_member_union _pick_member_container
+#define _pick_member_enum(_namespace, _qualifier, _container, _type, _decorator,\
+                          _name, _dimensions)                                  \
+        { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
+            _str(_decorator), _str(_name), _str(_dimensions),                 \
+            (enum reflectc_types)(REFLECTC_TYPES__##_container), 0, NULL,     \
+            { 0, NULL }, _from_noop },
 #define _pick_table_end(_container, _type)                                    \
     };                                                                        \
                                                                               \
@@ -84,6 +90,7 @@ _from_noop(void *self, struct reflectc *root)
 #undef _pick_member_container
 #undef _pick_member_struct
 #undef _pick_member_union
+#undef _pick_member_enum
 #undef _pick_table_end
 
 #else
@@ -130,6 +137,7 @@ _from_noop(void *self, struct reflectc *root)
                 ++m;
 #define _pick_member_struct _pick_member_container
 #define _pick_member_union _pick_member_container
+#define _pick_member_enum _pick_member__
 #define _pick_container_end(_namespace)                                       \
             }                                                                 \
         }                                                                     \
@@ -160,6 +168,7 @@ _from_noop(void *self, struct reflectc *root)
 #undef _pick_member_container
 #undef _pick_member_struct
 #undef _pick_member_union
+#undef _pick_member_enum
 #undef _pick_container_end
 
 #endif /* REFLECTC_HEADER */

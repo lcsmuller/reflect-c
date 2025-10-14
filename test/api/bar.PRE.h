@@ -12,11 +12,12 @@ PRIVATE(struct, bar, 3, (
     )
 )
 
-PUBLIC(struct, baz, 4, (
+PUBLIC(struct, baz, 5, (
         (_, struct, bar, *, a, _),
         (_, struct, bar, *, b, _),
         (_, struct, bar,         * *       *, c, _),
-        (_, _, char, *, d, _)
+        (_, _, char, *, d, _),
+        (_, enum, levels, _, e, _)
     )
 )
 

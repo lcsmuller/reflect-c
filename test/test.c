@@ -42,6 +42,9 @@ json_stringify(struct jsonb *jb,
     case REFLECTC_TYPES__float:
         jsonb_number(jb, buf, bufsize, *(float *)value);
         break;
+    case REFLECTC_TYPES__enum:
+        jsonb_number(jb, buf, bufsize, (double)*(const int *)value);
+        break;
     case REFLECTC_TYPES__struct:
     case REFLECTC_TYPES__union: {
         if (reflectc_length(member) > 1) {
@@ -127,6 +130,10 @@ _json_parse(const jsmnf_pair *p,
                 const int value = (int)strtol(json + p->v->start, NULL, 10);
                 reflectc_set(member, &value, sizeof(value));
             } break;
+            case REFLECTC_TYPES__enum: {
+                const int value = (int)strtol(json + p->v->start, NULL, 10);
+                reflectc_set(member, &value, member->size);
+            } break;
             case REFLECTC_TYPES__long: {
                 const long value = strtol(json + p->v->start, NULL, 10);
                 reflectc_set(member, &value, sizeof(value));
@@ -200,7 +207,7 @@ check_json_serializer(void)
         "{\"a\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
         "\"b\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
         "\"c\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
-        "\"d\":\"hello world\"}";
+        "\"d\":\"hello world\",\"e\":1}";
     char got_json[sizeof(expected_json)] = { 0 };
 
     jsmnf_loader expected_l, got_l;
@@ -214,7 +221,7 @@ check_json_serializer(void)
 
     // Generate the JSON string
     struct bar a = { true, 42, "hello world" }, *aa = &a, **aaa = &aa;
-    struct baz baz = { &a, &a, &aaa, "hello world" };
+    struct baz baz = { &a, &a, &aaa, "hello world", LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
     struct jsonb jb;
     jsonb_init(&jb);
@@ -248,6 +255,11 @@ check_json_serializer(void)
     ASSERT_MEM_EQ(expected_json + expected_pair->v->start,
                   got_json + got_pair->v->start,
                   got_pair->v->end - got_pair->v->start);
+    expected_pair = jsmnf_find(expected_l.root, "e", 1);
+    got_pair = jsmnf_find(got_l.root, "e", 1);
+    ASSERT_MEM_EQ(expected_json + expected_pair->v->start,
+                  got_json + got_pair->v->start,
+                  got_pair->v->end - got_pair->v->start);
 
     PASS();
 }
@@ -259,12 +271,12 @@ check_json_parser(void)
         "{\"a\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
         "\"b\":{\"boolean\":false,\"number\":123,\"string\":\"test string\"},"
         "\"c\":{\"boolean\":true,\"number\":99,\"string\":\"another string\"},"
-        "\"d\":\"parsed text\"}";
+        "\"d\":\"parsed text\",\"e\":3}";
 
     struct bar a = { 0 }, b = { 0 }, c = { 0 }, *cc = &c, **ccc = &cc;
     char d[32] = { 0 };
 
-    struct baz baz = { &a, &b, &ccc, d };
+    struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
 
     json_parse(json, sizeof(json) - 1, wrapped_baz);
@@ -282,6 +294,7 @@ check_json_parser(void)
     ASSERT_STR_EQ("another string", c.string);
 
     ASSERT_STR_EQ("parsed text", d);
+    ASSERT_EQ(LEVELS_THREE, baz.e);
 
     PASS();
 }
@@ -292,7 +305,7 @@ check_resolve_and_expand(void)
     struct bar value = { true, 7, "hydrate" };
     struct bar *first = &value;
     struct bar **second = &first;
-    struct baz baz = { &value, &value, &second, "hydrate" };
+    struct baz baz = { &value, &value, &second, "hydrate", LEVELS_TWO };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
     size_t c_pos = reflectc_get_pos_fast(struct, baz, c, wrapped_baz);
     const struct reflectc *c_member = &wrapped_baz->members.array[c_pos];
@@ -325,7 +338,7 @@ check_resolve_null_chain(void)
     struct bar *null_leaf = NULL;
     struct bar **null_chain = &null_leaf;
     struct bar ***null_root = &null_chain;
-    struct baz baz = { &a, &b, null_root, NULL };
+    struct baz baz = { &a, &b, null_root, NULL, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
     size_t c_pos = reflectc_get_pos_fast(struct, baz, c, wrapped_baz);
     const struct reflectc *c_member = &wrapped_baz->members.array[c_pos];
@@ -389,7 +402,7 @@ check_loop_through(void)
     struct bar a, b, c, *cc = &c, **ccc = &cc;
     char d[] = "hello world";
 
-    struct baz baz = { &a, &b, &ccc, d };
+    struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
     size_t pos = reflectc_get_pos_fast(struct, baz, a, wrapped_baz);
     ASSERT_EQ(&a, reflectc_get_member(wrapped_baz, pos));
