@@ -258,3 +258,194 @@ reflectc_array(const struct reflectc *root, const size_t length)
     }
     mut_root->length = length;
 }
+
+static void reflectc_cleanup_member_block(struct reflectc_mut *members,
+                                          size_t count);
+
+static void
+reflectc_cleanup_node(struct reflectc_mut *node)
+{
+    size_t span;
+    size_t i;
+
+    if (!node) {
+        return;
+    }
+
+    span = node->length ? node->length : 1;
+    for (i = 0; i < span; ++i) {
+        struct reflectc_mut *current = node + i;
+
+        if (!current->members.array || !current->members.length) {
+            continue;
+        }
+
+        reflectc_cleanup_member_block(current->members.array,
+                                      current->members.length);
+
+        if (i == 0) {
+            free(current->members.array);
+        }
+
+        current->members.array = NULL;
+        current->members.length = 0;
+    }
+}
+
+static void
+reflectc_cleanup_member_block(struct reflectc_mut *members, size_t count)
+{
+    size_t i;
+
+    if (!members) return;
+
+    for (i = 0; i < count; ++i) {
+        reflectc_cleanup_node(members + i);
+    }
+}
+
+void
+reflectc_cleanup(struct reflectc *member)
+{
+    if (!member) return;
+
+    reflectc_cleanup_node((struct reflectc_mut *)member);
+    free(member);
+}
+
+void
+reflectc_cleanup_members(struct reflectc *member)
+{
+    if (!member) return;
+
+    reflectc_cleanup_node((struct reflectc_mut *)member);
+}
+
+static int
+reflectc_for_each_impl(const struct reflectc *member,
+                       reflectc_visit_cb cb,
+                       void *ctx)
+{
+    size_t span;
+    size_t i;
+
+    if (!member || !cb) {
+        return 1;
+    }
+
+    span = member->length ? member->length : 1;
+    for (i = 0; i < span; ++i) {
+        const struct reflectc *current = member + i;
+        if (!cb(current, ctx)) {
+            return 0;
+        }
+        if (current->members.array && current->members.length) {
+            if (!reflectc_for_each_impl(current->members.array, cb, ctx)) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+int
+reflectc_for_each(const struct reflectc *root, reflectc_visit_cb cb, void *ctx)
+{
+    if (!root || !cb) {
+        return 0;
+    }
+    return reflectc_for_each_impl(root, cb, ctx);
+}
+
+const struct reflectc *
+reflectc_require_member(const struct reflectc *root,
+                        const char *name,
+                        size_t len)
+{
+    size_t pos;
+
+    if (!root || !root->members.array || !root->members.length) {
+        return NULL;
+    }
+    if (!name || !len) {
+        return NULL;
+    }
+
+    pos = reflectc_get_pos(root, name, len);
+    if (pos == (size_t)-1) {
+        return NULL;
+    }
+
+    return root->members.array + pos;
+}
+
+int
+reflectc_is_pointer_type(const struct reflectc *member)
+{
+    size_t i;
+
+    if (!member) {
+        return 0;
+    }
+
+    if (member->decorator.buf && member->decorator.length) {
+        for (i = 0; i < member->decorator.length; ++i) {
+            if (member->decorator.buf[i] == '*') {
+                return 1;
+            }
+        }
+    }
+
+    if (member->dimensions.buf && member->dimensions.length
+        && strchr(member->dimensions.buf, '['))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+int
+reflectc_is_null(const struct reflectc *member)
+{
+    if (!member) {
+        return 1;
+    }
+    if (!reflectc_is_pointer_type(member)) {
+        return 0;
+    }
+    if (!member->ptr_value) {
+        return 1;
+    }
+    return reflectc_resolve(member) == NULL;
+}
+
+static int
+reflectc_expand_all_impl(struct reflectc *member)
+{
+    size_t span;
+    size_t i;
+    int expanded = 0;
+
+    if (!member) return 0;
+
+    span = member->length ? member->length : 1;
+    for (i = 0; i < span; ++i) {
+        struct reflectc *current = member + i;
+        if (reflectc_expand(current)) {
+            ++expanded;
+        }
+        if (current->members.array && current->members.length) {
+            expanded += reflectc_expand_all_impl(
+                (struct reflectc *)current->members.array);
+        }
+    }
+    return expanded;
+}
+
+int
+reflectc_expand_all(struct reflectc *root)
+{
+    if (!root) return 0;
+    return reflectc_expand_all_impl((struct reflectc *)root);
+}

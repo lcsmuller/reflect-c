@@ -73,6 +73,20 @@ const char *reflectc_string(const struct reflectc *dest,
 void *reflectc_resolve(const struct reflectc *member);
 int reflectc_expand(const struct reflectc *member);
 
+typedef int (*reflectc_visit_cb)(const struct reflectc *member, void *ctx);
+
+void reflectc_cleanup(struct reflectc *member);
+void reflectc_cleanup_members(struct reflectc *member);
+int reflectc_for_each(const struct reflectc *root,
+                      reflectc_visit_cb cb,
+                      void *ctx);
+const struct reflectc *reflectc_require_member(const struct reflectc *root,
+                                               const char *name,
+                                               size_t len);
+int reflectc_is_pointer_type(const struct reflectc *member);
+int reflectc_is_null(const struct reflectc *member);
+int reflectc_expand_all(struct reflectc *root);
+
 #define reflectc_get reflectc_deref
 #define reflectc_set reflectc_memcpy
 

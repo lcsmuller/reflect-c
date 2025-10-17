@@ -17,30 +17,37 @@
 #define SIZE_MAX ((size_t)-1)
 #endif
 
+#ifdef TEST_DEBUG_ON
+#define TEST_DEBUG_PRINT(...) printf(__VA_ARGS__)
+#else
+#define TEST_DEBUG_PRINT(...)
+#endif
+
 static void
 json_stringify(struct jsonb *jb,
                const struct reflectc *member,
                char buf[],
-               const size_t bufsize)
+               size_t bufsize)
 {
     const void *value = reflectc_get(member);
-    if (member->decorator.length && member->ptr_value == NULL) {
+    if (reflectc_is_null(member)) {
         jsonb_null(jb, buf, bufsize);
         return;
     }
 
     switch (member->type) {
     case REFLECTC_TYPES__char:
-        jsonb_string(jb, buf, bufsize, value, strlen(value));
+        jsonb_string(jb, buf, bufsize, (const char *)value,
+                     strlen((const char *)value));
         break;
     case REFLECTC_TYPES__int:
-        jsonb_number(jb, buf, bufsize, *(int *)value);
+        jsonb_number(jb, buf, bufsize, *(const int *)value);
         break;
     case REFLECTC_TYPES__bool:
-        jsonb_bool(jb, buf, bufsize, *(bool *)value);
+        jsonb_bool(jb, buf, bufsize, *(const bool *)value);
         break;
     case REFLECTC_TYPES__float:
-        jsonb_number(jb, buf, bufsize, *(float *)value);
+        jsonb_number(jb, buf, bufsize, *(const float *)value);
         break;
     case REFLECTC_TYPES__enum:
         jsonb_number(jb, buf, bufsize, (double)*(const int *)value);
@@ -65,28 +72,27 @@ json_stringify(struct jsonb *jb,
         }
     } break;
     default:
-        /* In a real implementation we would have an user callback here for
-         *  custom types */
         break;
     }
 }
 
 static void
-_json_parse(const jsmnf_pair *p,
-            const char *json,
-            size_t length,
-            const struct reflectc *member)
+json_parse_impl(const jsmnf_pair *p,
+                const char *json,
+                size_t length,
+                const struct reflectc *member)
 {
     if (!p || !member) {
-        printf("Invalid parameters to _json_parse\n");
         return;
     }
 
     if (p->k) {
-        printf("Type: %d, Length: %zu, Key: %.*s\n", p->v->type, p->length,
-               p->k->end - p->k->start, json + p->k->start);
+        TEST_DEBUG_PRINT("Type: %d, Length: %zu, Key: %.*s\n", p->v->type,
+                         p->length, p->k->end - p->k->start,
+                         json + p->k->start);
     }
-    printf("Value: %.*s\n", p->v->end - p->v->start, json + p->v->start);
+    TEST_DEBUG_PRINT("Value: %.*s\n", p->v->end - p->v->start,
+                     json + p->v->start);
     switch (p->v->type) {
     case JSMN_STRING: {
         if (member->type != REFLECTC_TYPES__char
@@ -95,8 +101,8 @@ _json_parse(const jsmnf_pair *p,
             return;
         }
         reflectc_string(member, json + p->v->start, p->v->end - p->v->start);
-        printf("Parsing string: %.*s\n", (int)(p->v->end - p->v->start),
-               json + p->v->start);
+        TEST_DEBUG_PRINT("Parsing string: %.*s\n",
+                         (int)(p->v->end - p->v->start), json + p->v->start);
     } break;
     case JSMN_PRIMITIVE: {
         switch (json[p->v->start]) {
@@ -107,7 +113,8 @@ _json_parse(const jsmnf_pair *p,
                 return;
             }
             reflectc_set(member, &value, sizeof(value));
-            printf("Parsing boolean: %s\n", value ? "true" : "false");
+            TEST_DEBUG_PRINT("Parsing boolean: %s\n",
+                             value ? "true" : "false");
         } break;
         case 'n': {
             const void *value = NULL;
@@ -156,30 +163,33 @@ _json_parse(const jsmnf_pair *p,
     }
     case JSMN_OBJECT:
         if (member->type != REFLECTC_TYPES__struct) {
-            printf("Expected a struct type for JSON object\nGot: %d\n",
-                   member->type);
+            TEST_DEBUG_PRINT(
+                "Expected a struct type for JSON object\nGot: %d\n",
+                member->type);
             return;
         }
         reflectc_expand(member);
         for (size_t i = 0; i < p->capacity; ++i) {
             const size_t pos = reflectc_get_pos(member, p->buckets[i].key.buf,
                                                 p->buckets[i].key.length);
-            printf("1. Parsing field (%zu): %.*s\n", pos,
-                   (int)p->buckets[i].key.length, p->buckets[i].key.buf);
+            TEST_DEBUG_PRINT("1. Parsing field (%zu): %.*s\n", pos,
+                             (int)p->buckets[i].key.length,
+                             p->buckets[i].key.buf);
             if (pos != SIZE_MAX) {
                 const jsmnf_pair *p_m = jsmnf_find(p, p->buckets[i].key.buf,
                                                    p->buckets[i].key.length);
                 const struct reflectc *m = member->members.array + pos;
-                printf("2. Parsing field: %.*s\n",
-                       (int)p->buckets[i].key.length, p->buckets[i].key.buf);
-                _json_parse(p_m, json, length, m);
+                TEST_DEBUG_PRINT("2. Parsing field: %.*s\n",
+                                 (int)p->buckets[i].key.length,
+                                 p->buckets[i].key.buf);
+                json_parse_impl(p_m, json, length, m);
             }
         }
         break;
     case JSMN_ARRAY:
         reflectc_array(member, p->length);
         for (size_t i = 0; i < p->length; ++i) {
-            _json_parse(&p->fields[i], json, length, &member[i]);
+            json_parse_impl(&p->fields[i], json, length, &member[i]);
         }
         break;
     default:
@@ -195,9 +205,20 @@ json_parse(const char *json, size_t len, struct reflectc *root)
     size_t pairs_len = 0;
     jsmnf_init(&l);
     if (jsmnf_load_auto(&l, json, len, &pairs, &pairs_len) > 0) {
-        _json_parse(l.root, json, len, root);
+        json_parse_impl(l.root, json, len, root);
         free(pairs);
     }
+}
+
+static int
+count_members(const struct reflectc *member, void *ctx)
+{
+    size_t *count = ctx;
+    (void)member;
+    if (count) {
+        ++(*count);
+    }
+    return 1;
 }
 
 TEST
@@ -261,6 +282,8 @@ check_json_serializer(void)
                   got_json + got_pair->v->start,
                   got_pair->v->end - got_pair->v->start);
 
+    reflectc_cleanup(wrapped_baz);
+
     PASS();
 }
 
@@ -296,6 +319,12 @@ check_json_parser(void)
     ASSERT_STR_EQ("parsed text", d);
     ASSERT_EQ(LEVELS_THREE, baz.e);
 
+    reflectc_cleanup(wrapped_baz);
+
+    free(a.string);
+    free(b.string);
+    free(c.string);
+
     PASS();
 }
 
@@ -327,6 +356,8 @@ check_resolve_and_expand(void)
     ASSERT_NEQ(SIZE_MAX, number_pos);
     ASSERT_EQ(value.number, *(int *)reflectc_get_member(c_member, number_pos));
 
+    reflectc_cleanup(wrapped_baz);
+
     PASS();
 }
 
@@ -345,6 +376,8 @@ check_resolve_null_chain(void)
 
     ASSERT_EQ(NULL, reflectc_resolve(c_member));
     ASSERT_EQ(0, reflectc_expand(c_member));
+
+    reflectc_cleanup(wrapped_baz);
 
     PASS();
 }
@@ -392,7 +425,7 @@ check_extended_type_metadata(void)
     ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_numbers_t,
               numbers_member->type);
 
-    free(wrapper);
+    reflectc_cleanup(wrapper);
     PASS();
 }
 
@@ -413,6 +446,35 @@ check_loop_through(void)
     pos = reflectc_get_pos_fast(struct, baz, d, wrapped_baz);
     ASSERT_MEM_EQ(&d, reflectc_get_member(wrapped_baz, pos), sizeof(d));
 
+    reflectc_cleanup(wrapped_baz);
+
+    PASS();
+}
+
+TEST
+check_cleanup(void)
+{
+    struct bar a = { true, 7, "hydrate" };
+    struct bar b = { false, 9, "persist" };
+    struct bar *ap = &a;
+    struct bar **app = &ap;
+    struct bar ***appp = &app;
+    struct baz baz = { &a, &b, appp, "cleanup", LEVELS_ONE };
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    size_t a_pos = reflectc_get_pos_fast(struct, baz, a, wrapped_baz);
+    const struct reflectc *a_member = &wrapped_baz->members.array[a_pos];
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+    ASSERT_NEQ(NULL, wrapped_baz->members.array);
+    ASSERT_NEQ(NULL, a_member->members.array);
+
+    reflectc_cleanup(wrapped_baz);
+
+    ASSERT_NEQ(NULL, baz.a);
+    ASSERT_EQ(true, baz.a->boolean);
+    ASSERT_EQ(7, baz.a->number);
+    ASSERT_STR_EQ("hydrate", baz.a->string);
+
     PASS();
 }
 
@@ -431,6 +493,53 @@ check_array(void)
                   sizeof(foo.number));
     pos = reflectc_get_pos_fast(struct, foo, string, wrapped_foo);
     ASSERT_STR_EQ(foo.string, reflectc_get_member(wrapped_foo, pos));
+
+    reflectc_cleanup(wrapped_foo);
+
+    PASS();
+}
+
+TEST
+check_helper_utilities(void)
+{
+    struct bar a = { true, 7, "hydrate" };
+    struct bar *a_ptr = &a;
+    struct bar **a_ptr_ptr = &a_ptr;
+    struct bar ***a_ptr_ptr_ptr = &a_ptr_ptr;
+    struct baz baz = { &a, &a, a_ptr_ptr_ptr, "helpers", LEVELS_TWO };
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    size_t visits = 0;
+    const struct reflectc *member_a;
+    const struct reflectc *member_c;
+    const struct reflectc *missing;
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+
+    ASSERT_NEQ(0, reflectc_expand_all(wrapped_baz));
+    ASSERT_NEQ(0, reflectc_for_each(wrapped_baz, count_members, &visits));
+    ASSERT_NEQ(0, visits);
+
+    member_a = reflectc_require_member(wrapped_baz, "a", strlen("a"));
+    ASSERT_NEQ(NULL, member_a);
+    ASSERT_NEQ(0, reflectc_is_pointer_type(member_a));
+
+    member_c = reflectc_require_member(wrapped_baz, "c", strlen("c"));
+    ASSERT_NEQ(NULL, member_c);
+    ASSERT_EQ(0, reflectc_is_null(member_c));
+
+    missing = reflectc_require_member(wrapped_baz, "missing", strlen("missing"));
+    ASSERT_EQ(NULL, missing);
+
+    reflectc_cleanup_members(wrapped_baz);
+    baz.c = NULL;
+    reflectc_from_baz(&baz, wrapped_baz);
+
+    member_c = reflectc_require_member(wrapped_baz, "c", strlen("c"));
+    ASSERT_NEQ(NULL, member_c);
+    ASSERT_NEQ(0, reflectc_is_null(member_c));
+
+    reflectc_cleanup(wrapped_baz);
+
     PASS();
 }
 
@@ -442,7 +551,9 @@ SUITE(wrapper)
     RUN_TEST(check_resolve_null_chain);
     RUN_TEST(check_extended_type_metadata);
     RUN_TEST(check_loop_through);
+    RUN_TEST(check_cleanup);
     RUN_TEST(check_array);
+    RUN_TEST(check_helper_utilities);
 }
 
 GREATEST_MAIN_DEFS();

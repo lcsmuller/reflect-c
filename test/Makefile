@@ -9,7 +9,7 @@ OUT_H = $(TOP)/$(OUT).h
 OUT_O = $(TOP)/$(OUT).o
 EXES  = test
 
-CFLAGS  += -Wall -Wextra -Wpedantic -I$(TOP) -g -std=c99
+CFLAGS  += -Wall -Wextra -Wpedantic -I$(TOP) -I$(TOP)/test -g -std=c99
 LDFLAGS += -L$(TOP)
 LDLIBS  += -lreflectc
 
