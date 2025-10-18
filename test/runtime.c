@@ -336,7 +336,7 @@ check_resolve_and_expand(void)
     struct bar **second = &first;
     struct baz baz = { &value, &value, &second, "hydrate", LEVELS_TWO };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
-    size_t c_pos = reflectc_get_pos_fast(struct, baz, c, wrapped_baz);
+    size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
     const struct reflectc *c_member = &wrapped_baz->members.array[c_pos];
     size_t before = c_member->members.length;
     size_t boolean_pos;
@@ -371,7 +371,7 @@ check_resolve_null_chain(void)
     struct bar ***null_root = &null_chain;
     struct baz baz = { &a, &b, null_root, NULL, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
-    size_t c_pos = reflectc_get_pos_fast(struct, baz, c, wrapped_baz);
+    size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
     const struct reflectc *c_member = &wrapped_baz->members.array[c_pos];
 
     ASSERT_EQ(NULL, reflectc_resolve(c_member));
@@ -387,11 +387,10 @@ check_extended_type_metadata(void)
 {
     struct hooks sample = { 21, true, (size_t)512, (unsigned long)7 };
     struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
-    size_t words_pos = reflectc_get_pos_fast(struct, hooks, words, wrapper);
+    size_t words_pos = REFLECTC_LOOKUP(struct, hooks, words, wrapper);
     const struct reflectc *words_member = &wrapper->members.array[words_pos];
     const words_t *words_ptr = reflectc_get_member(wrapper, words_pos);
-    size_t numbers_pos =
-        reflectc_get_pos_fast(struct, hooks, numbers, wrapper);
+    size_t numbers_pos = REFLECTC_LOOKUP(struct, hooks, numbers, wrapper);
     const struct reflectc *numbers_member =
         &wrapper->members.array[numbers_pos];
     const numbers_t *numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
@@ -435,13 +434,13 @@ check_loop_through(void)
 
     struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
-    size_t pos = reflectc_get_pos_fast(struct, baz, a, wrapped_baz);
+    size_t pos = REFLECTC_LOOKUP(struct, baz, a, wrapped_baz);
     ASSERT_EQ(&a, reflectc_get_member(wrapped_baz, pos));
-    pos = reflectc_get_pos_fast(struct, baz, b, wrapped_baz);
+    pos = REFLECTC_LOOKUP(struct, baz, b, wrapped_baz);
     ASSERT_EQ(&b, reflectc_get_member(wrapped_baz, pos));
-    pos = reflectc_get_pos_fast(struct, baz, c, wrapped_baz);
+    pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
     ASSERT_EQ(&ccc, reflectc_get_member(wrapped_baz, pos));
-    pos = reflectc_get_pos_fast(struct, baz, d, wrapped_baz);
+    pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
     ASSERT_MEM_EQ(&d, reflectc_get_member(wrapped_baz, pos), sizeof(d));
 
     reflectc_cleanup(wrapped_baz);
@@ -459,7 +458,7 @@ check_cleanup(void)
     struct bar ***appp = &app;
     struct baz baz = { &a, &b, appp, "cleanup", LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
-    size_t a_pos = reflectc_get_pos_fast(struct, baz, a, wrapped_baz);
+    size_t a_pos = REFLECTC_LOOKUP(struct, baz, a, wrapped_baz);
     const struct reflectc *a_member = &wrapped_baz->members.array[a_pos];
 
     ASSERT_NEQ(NULL, wrapped_baz);
@@ -484,12 +483,12 @@ check_array(void)
     } native = { 42 };
     struct foo foo = { true, { 42, 43, 44, 45 }, "hello world", &native };
     struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
-    size_t pos = reflectc_get_pos_fast(struct, foo, boolean, wrapped_foo);
+    size_t pos = REFLECTC_LOOKUP(struct, foo, boolean, wrapped_foo);
     ASSERT_EQ(foo.boolean, *(bool *)reflectc_get_member(wrapped_foo, pos));
-    pos = reflectc_get_pos_fast(struct, foo, number, wrapped_foo);
+    pos = REFLECTC_LOOKUP(struct, foo, number, wrapped_foo);
     ASSERT_MEM_EQ(foo.number, reflectc_get_member(wrapped_foo, pos),
                   sizeof(foo.number));
-    pos = reflectc_get_pos_fast(struct, foo, string, wrapped_foo);
+    pos = REFLECTC_LOOKUP(struct, foo, string, wrapped_foo);
     ASSERT_STR_EQ(foo.string, reflectc_get_member(wrapped_foo, pos));
 
     reflectc_cleanup(wrapped_foo);

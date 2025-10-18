@@ -76,12 +76,12 @@ The pipeline is intentionally pure-C, so the same commands work on any system wi
        struct reflectc *r = reflectc_from_person(&alice, NULL);
 
        /* Fast indexed access via generated enums */
-       size_t name_pos = reflectc_get_pos_fast(struct, person, name, r);
+       size_t name_pos = REFLECTC_LOOKUP(struct, person, name, r);
        const char *name = reflectc_get_member(r, name_pos);
 
        printf("%s is %d years old\n",
               name,
-              *(int *)reflectc_get_member(r, reflectc_get_pos_fast(struct, person, age, r)));
+              *(int *)reflectc_get_member(r, REFLECTC_LOOKUP(struct, person, age, r)));
 
        free(r); /* You own the wrapper memory */
        return 0;
@@ -144,7 +144,7 @@ The runtime layer (`reflect-c.h` / `reflect-c.c`) manages metadata trees produce
 | `struct reflectc *reflectc_from_<type>(<type> *self, struct reflectc *reuse)` | Materialize metadata for an instance. Pass `NULL` to allocate a fresh tree or reuse an existing buffer for arrays. |
 | `size_t reflectc_length(const struct reflectc *member)` | Compute the effective length, expanding array dimensions on demand. |
 | `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Lookup a member by string at runtime. |
-| `reflectc_get_pos_fast(struct, type, field, root)` | Generated macro returning a compile-time index for a field. |
+| `REFLECTC_LOOKUP(struct, type, field, root)` | Generated macro returning a compile-time index for a field. |
 | `const void *reflectc_get_member(...)` | Dereference the pointer to a member inside the wrapped object with bounds checking. |
 | `const void *reflectc_deref(const struct reflectc *field)` | Resolve multi-level pointers and array declarators to the "natural" pointed-to object. |
 | `const void *reflectc_set(...)` / `reflectc_memcpy` | Copy data into a member, with size guards. |
@@ -178,7 +178,7 @@ free(wrapper);
 ### Editing nested structures
 
 ```c
-size_t number_pos = reflectc_get_pos_fast(struct, bar, number, bar_ref);
+size_t number_pos = REFLECTC_LOOKUP(struct, bar, number, bar_ref);
 int new_value = 1337;
 reflectc_set_member(bar_ref, number_pos, &new_value, sizeof new_value);
 ```
@@ -213,7 +213,7 @@ At runtime the custom members resolve to the new enum values:
 ```c
 struct hooks sample = {21, true, 512u, 7ul};
 struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
-size_t words_pos = reflectc_get_pos_fast(struct, hooks, words, wrapper);
+size_t words_pos = REFLECTC_LOOKUP(struct, hooks, words, wrapper);
 const struct reflectc *words = &wrapper->members.array[words_pos];
 
 if (words->type == (enum reflectc_types)REFLECTC_TYPES__reflectc_words_t) {
@@ -276,7 +276,7 @@ Commit the regenerated header if you want downstream builds to avoid running the
 
    This produces `app_reflect.c`, `app_reflect.h`, and `app_reflect.o` alongside the runtime library. For CMake, Meson, or others, wrap that command in a custom build step so it re-runs when recipes change.
 4. **Compile and link** - add the generated `.c` (or `.o`) plus `reflect-c.c` to your project, or simply link against the provided `libreflectc.a`. Ensure your compiler’s include path covers both `reflect-c.h` and the generated header.
-5. **Use the helpers at runtime** - include the headers, call `reflectc_from_<type>` to wrap your instances, and interact with fields via `reflectc_get_pos_fast`, `reflectc_get_member`, or the other API functions described above. Free wrappers with `free` when done.
+5. **Use the helpers at runtime** - include the headers, call `reflectc_from_<type>` to wrap your instances, and interact with fields via `REFLECTC_LOOKUP`, `reflectc_get_member`, or the other API functions described above. Free wrappers with `free` when done.
 6. **Optional polish** - commit generated files if you need deterministic builds without the generator present, or extend the emitted enum range by adding typedefs and enums mapped to `REFLECTC_TYPES__EXTEND` within your recipes.
 
 ## Project structure

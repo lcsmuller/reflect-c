@@ -23,12 +23,12 @@ STATIC_ASSERT(RC_COMPILE_LOOKUP__baz_MAX == 5, baz_member_count);
 STATIC_ASSERT(RC_COMPILE_LOOKUP__foo_MAX == 4, foo_member_count);
 STATIC_ASSERT(RC_COMPILE_LOOKUP__hooks_MAX == 4, hooks_member_count);
 
-/* Spill-free lookup indices emitted by reflectc_get_pos_fast. */
-STATIC_ASSERT(reflectc_get_pos_fast(struct, bar, boolean, NULL) == 0,
+/* Spill-free lookup indices emitted by REFLECTC_LOOKUP. */
+STATIC_ASSERT(REFLECTC_LOOKUP(struct, bar, boolean, NULL) == 0,
               bar_boolean_index);
-STATIC_ASSERT(reflectc_get_pos_fast(struct, bar, string, NULL) == 2,
+STATIC_ASSERT(REFLECTC_LOOKUP(struct, bar, string, NULL) == 2,
               bar_string_index);
-STATIC_ASSERT(reflectc_get_pos_fast(struct, baz, c, NULL) == 2, baz_c_index);
+STATIC_ASSERT(REFLECTC_LOOKUP(struct, baz, c, NULL) == 2, baz_c_index);
 
 /* Custom scalar extensions must remain anchored after REFLECTC_TYPES__EXTEND.
  */

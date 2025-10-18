@@ -229,7 +229,7 @@ REFLECTC_NS(_string)(const struct REFLECTC_PREFIX *dest,
     has_dimensions = dest->dimensions.length && dest->dimensions.buf
                      && strchr(dest->dimensions.buf, '[');
 
-    if (dest->type != REFLECTC_TYPES__char && depth < 2) {
+    if (dest->type != REFLECTC_NS_UPPER(_TYPES__char) && depth < 2) {
         return NULL;
     }
     if (!dest->ptr_value) {

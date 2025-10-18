@@ -41,7 +41,7 @@ The returned pointer is allocated with `calloc`/`malloc`. Call `free()` on the o
 | --- | --- |
 | `size_t reflectc_length(const struct reflectc *member)` | Returns effective length for array-like nodes. Auto-expands `length` when the declaration has dimensions (e.g., `[4]`). Returns `0` if `member` or its `ptr_value` is `NULL`. |
 | `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Performs a linear search through `root->members` for the given name. Returns `SIZE_MAX` when not found. |
-| `reflectc_get_pos_fast(struct, foo, bar, root)` | Macro emitted per type; resolves to a constant index for `bar` inside `struct foo`. |
+| `REFLECTC_LOOKUP(struct, foo, bar, root)` | Macro emitted per type; resolves to a constant index for `bar` inside `struct foo`. |
 | `unsigned reflectc_get_pointer_depth(const struct reflectc *member)` | Counts pointer levels inferred from the decorator and dimensions. Arrays count as one additional level. Returns `0` when the member or its `ptr_value` is `NULL`. |
 | `const void *reflectc_deref(const struct reflectc *member)` | Provides a convenient view of `member->ptr_value`. Automatically dereferences `T (*)[N]` and multi-level pointers (`**`, `***`) once. |
 | `void *reflectc_resolve(const struct reflectc *member)` | Walks through every pointer level encoded in the decorator until it reaches the concrete value. Returns `NULL` when any intermediate pointer is `NULL`. |

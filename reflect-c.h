@@ -3,7 +3,8 @@
 
 #include <stddef.h>
 
-/* Allow consumers to rename the runtime namespace (`reflectc_*` / `REFLECTC_*`). */
+/* Allow consumers to rename the runtime namespace (`reflectc_*` /
+ * `REFLECTC_*`). */
 #ifndef REFLECTC_PREFIX
 #define REFLECTC_PREFIX reflectc
 #endif /* REFLECTC_PREFIX */
@@ -99,7 +100,7 @@ int REFLECTC_NS(_is_pointer_type)(const struct REFLECTC_PREFIX *member);
 int REFLECTC_NS(_is_null)(const struct REFLECTC_PREFIX *member);
 int REFLECTC_NS(_expand_all)(struct REFLECTC_PREFIX *root);
 
-#define reflectc_get_pos_fast(_container, _namespace, _member_name, _root)    \
+#define REFLECTC_LOOKUP(_container, _namespace, _member_name, _root)          \
     (size_t)(REFLECTC_NS_UPPER(_LOOKUP__##_namespace##__##_member_name))
 
 const void *REFLECTC_NS(_get)(const struct REFLECTC_PREFIX *member);
