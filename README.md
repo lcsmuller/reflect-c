@@ -88,6 +88,27 @@ The pipeline is intentionally pure-C, so the same commands work on any system wi
    }
    ```
 
+## Customizing the symbol prefix
+
+The public runtime API is namespaced through two macros so you can avoid collisions when embedding Reflect-C into an existing project:
+
+- `REFLECTC_PREFIX` (defaults to `reflectc`) controls the lowercase prefix used by all runtime functions and struct names, e.g. `reflectc_get` or `reflectc_from_<type>`.
+- `REFLECTC_PREFIX_UPPER` (defaults to `REFLECTC`) mirrors the same namespace in uppercase form for generated enums and lookup tables such as `REFLECTC_LOOKUP__struct__member`.
+
+Override them before including `reflect-c.h`, **AND** supply `-D` flags when compiling:
+
+```c
+#define REFLECTC_PREFIX rc_compile
+#define REFLECTC_PREFIX_UPPER RC_COMPILE
+#include "reflect-c.h"
+```
+
+```sh
+cc -DREFLECTC_PREFIX=rc_compile -DREFLECTC_PREFIX_UPPER=RC_COMPILE ...
+```
+
+Generated recipe output inherits these settings as long as the same macros are provided during the metadata build (see `test/compile.c` for a concrete example), keeping runtime and generated symbols in sync.
+
 ## Recipe syntax
 
 Recipes live in `.PRE.h` files that can be included safely in regular code. Each entry is a macro of the shape

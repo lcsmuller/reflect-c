@@ -4,11 +4,13 @@
 #include <stddef.h>
 #ifndef REFLECTC_CUSTOM_TYPES_DEFINED
 #define REFLECTC_CUSTOM_TYPES_DEFINED 1
-typedef size_t reflectc_words_t;
-typedef unsigned long reflectc_numbers_t;
-enum reflectc_custom_types {
-    REFLECTC_TYPES__reflectc_words_t = REFLECTC_TYPES__EXTEND,
-    REFLECTC_TYPES__reflectc_numbers_t
+
+typedef size_t words_t;
+typedef unsigned long numbers_t;
+
+enum {
+    REFLECTC_NS_UPPER(_TYPES__words_t) = REFLECTC_NS_UPPER(_TYPES__EXTEND),
+    REFLECTC_NS_UPPER(_TYPES__numbers_t)
 };
 #endif
 */
@@ -17,7 +19,7 @@ enum reflectc_custom_types {
 PUBLIC(struct, hooks, 4, (
     (_, _, int, _, value, _),
     (_, _, bool, _, flag, _),
-    (_, _, reflectc_words_t, _, words, _),
-    (_, _, reflectc_numbers_t, _, numbers, _)
+    (_, _, words_t, _, words, _),
+    (_, _, numbers_t, _, numbers, _)
     )
 )

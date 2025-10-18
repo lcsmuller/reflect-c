@@ -51,11 +51,7 @@ echo:
 	@ echo 'API_DIR: $(API_DIR)'
 	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
-$(TOOLS_DIR):
-	mkdir -p $(TOOLS_DIR)
-
-$(TOOLS_DIR)/gen_tuples: $(TOOLS_DIR)/gen_tuples.c | $(TOOLS_DIR)
-	$(CC) $(CFLAGS) -o $@ $<
+$(TOOLS_DIR)/gen_tuples: $(TOOLS_DIR)/gen_tuples.c
 
 tuples: $(TOOLS_DIR)/gen_tuples
 	@echo "Generating reflect-c_TUPLE.h with MAX=$(REFLECTC_TUPLE_MAX)"

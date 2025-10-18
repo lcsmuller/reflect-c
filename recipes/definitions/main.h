@@ -62,9 +62,9 @@
     enum {
 #define _pick_member(_namespace, _qualifier, _container, _type, _decorator,   \
                     _name, _dimensions)                                       \
-        __REFLECTC_LOOKUP__##_namespace##__##_name##__,
+        REFLECTC_NS_UPPER(_LOOKUP__##_namespace##__##_name),
 #define _pick_container_end(_namespace)                                       \
-        __REFLECTC_LOOKUP__##_namespace##_MAX__                               \
+        REFLECTC_NS_UPPER(_LOOKUP__##_namespace##_MAX)                        \
     };
 #define REFLECTC_PUBLIC 1
 #define REFLECTC_PRIVATE 1

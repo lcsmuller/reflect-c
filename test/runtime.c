@@ -389,24 +389,22 @@ check_extended_type_metadata(void)
     struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
     size_t words_pos = reflectc_get_pos_fast(struct, hooks, words, wrapper);
     const struct reflectc *words_member = &wrapper->members.array[words_pos];
-    const reflectc_words_t *words_ptr =
-        reflectc_get_member(wrapper, words_pos);
+    const words_t *words_ptr = reflectc_get_member(wrapper, words_pos);
     size_t numbers_pos =
         reflectc_get_pos_fast(struct, hooks, numbers, wrapper);
     const struct reflectc *numbers_member =
         &wrapper->members.array[numbers_pos];
-    const reflectc_numbers_t *numbers_ptr =
-        reflectc_get_member(wrapper, numbers_pos);
+    const numbers_t *numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
 
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_words_t,
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__words_t,
               words_member->type);
-    ASSERT_EQ(sizeof(reflectc_words_t), words_member->size);
+    ASSERT_EQ(sizeof(words_t), words_member->size);
     ASSERT_NEQ(NULL, words_ptr);
     ASSERT_EQ(sample.words, *words_ptr);
 
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_numbers_t,
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__numbers_t,
               numbers_member->type);
-    ASSERT_EQ(sizeof(reflectc_numbers_t), numbers_member->size);
+    ASSERT_EQ(sizeof(numbers_t), numbers_member->size);
     ASSERT_NEQ(NULL, numbers_ptr);
     ASSERT_EQ(sample.numbers, *numbers_ptr);
 
@@ -415,14 +413,14 @@ check_extended_type_metadata(void)
     words_ptr = reflectc_get_member(wrapper, words_pos);
     ASSERT_NEQ(NULL, words_member);
     ASSERT_NEQ(NULL, words_ptr);
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_words_t,
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__words_t,
               words_member->type);
 
     numbers_member = &wrapper->members.array[numbers_pos];
     numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
     ASSERT_NEQ(NULL, numbers_member);
     ASSERT_NEQ(NULL, numbers_ptr);
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__reflectc_numbers_t,
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__numbers_t,
               numbers_member->type);
 
     reflectc_cleanup(wrapper);
@@ -527,7 +525,8 @@ check_helper_utilities(void)
     ASSERT_NEQ(NULL, member_c);
     ASSERT_EQ(0, reflectc_is_null(member_c));
 
-    missing = reflectc_require_member(wrapped_baz, "missing", strlen("missing"));
+    missing =
+        reflectc_require_member(wrapped_baz, "missing", strlen("missing"));
     ASSERT_EQ(NULL, missing);
 
     reflectc_cleanup_members(wrapped_baz);

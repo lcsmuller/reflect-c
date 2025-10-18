@@ -1,8 +1,8 @@
 #ifdef REFLECTC_WRAPPER
 
 #define _pick_declaration(_container, _type)                                  \
-    struct reflectc *reflectc_from_##_type(_container _type *self,            \
-                                           struct reflectc *root);
+    struct REFLECTC_PREFIX *REFLECTC_NS(_from_##_type)(                       \
+        _container _type *self, struct REFLECTC_PREFIX *root);
 
 #ifdef REFLECTC_HEADER
 
@@ -23,8 +23,8 @@
 #define _is_empty(_arg) (#_arg[0] == '\0')
 #define _str(_arg) { _is_empty(_arg) ? NULL : #_arg, _is_empty(_arg) ? 0 : sizeof(#_arg) - 1 }
 
-static struct reflectc*
-_from_noop(void *self, struct reflectc *root)
+static struct REFLECTC_PREFIX*
+_from_noop(void *self, struct REFLECTC_PREFIX *root)
 {
     (void)self;
     return root;
@@ -37,42 +37,44 @@ _from_noop(void *self, struct reflectc *root)
 #include "reflect-c_EXPAND.h"
 
 #define _pick_table(_container, _type)                                        \
-    static const struct reflectc _type##__members[] = {
+    static const struct REFLECTC_PREFIX _type##__members[] = {
 #define _pick_member__(_namespace, _qualifier, _container, _type, _decorator, \
                       _name, _dimensions)                                     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            (enum reflectc_types)(REFLECTC_TYPES__##_type), 0, NULL,          \
-            { 0, NULL }, _from_noop },
+            (enum REFLECTC_NS(_types))(REFLECTC_NS_UPPER(_TYPES__##_type)), 0,\
+                NULL, { 0, NULL }, _from_noop },
 #define _pick_member_container(_namespace, _qualifier, _container, _type,     \
                               _decorator, _name, _dimensions)                 \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            (enum reflectc_types)(REFLECTC_TYPES__##_container), 0, NULL,     \
-            { 0, NULL },                                                     \
+            (enum REFLECTC_NS(_types))(REFLECTC_NS_UPPER(                     \
+                                        _TYPES__##_container)), 0, NULL,      \
+            { 0, NULL },                                                      \
 /*#! #ifdef */ REFLECTC_DEFINED##__##_type /*#! */                            \
-            (reflectc_from_cb)reflectc_from_##_type                           \
+            (REFLECTC_NS(_from_cb))REFLECTC_NS(_from_##_type)                 \
 /*#! #else */ /*#! */                                                         \
             _from_noop                                                        \
 /*#! #endif */ /*#! */                                                        \
          },
 #define _pick_member_struct _pick_member_container
 #define _pick_member_union _pick_member_container
-#define _pick_member_enum(_namespace, _qualifier, _container, _type, _decorator,\
-                          _name, _dimensions)                                  \
+#define _pick_member_enum(_namespace, _qualifier, _container, _type,          \
+                          _decorator, _name, _dimensions)                     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
             _str(_decorator), _str(_name), _str(_dimensions),                 \
-            (enum reflectc_types)(REFLECTC_TYPES__##_container), 0, NULL,     \
-            { 0, NULL }, _from_noop },
+            (enum REFLECTC_NS(_types))(REFLECTC_NS_UPPER(                     \
+                                        _TYPES__##_container)),               \
+            0, NULL, { 0, NULL }, _from_noop },
 #define _pick_table_end(_container, _type)                                    \
     };                                                                        \
                                                                               \
-    static const struct reflectc _type##__root =                              \
+    static const struct REFLECTC_PREFIX _type##__root =                       \
         { sizeof(_container _type), { NULL, 0 }, { NULL, 0 },                 \
             { #_type, sizeof(#_type) - 1 }, { NULL, 0 },                      \
-            (enum reflectc_types)(REFLECTC_TYPES__##_container), 0, NULL,     \
-            { 0, NULL },                                                     \
-            (reflectc_from_cb)reflectc_from_##_type };
+            (enum REFLECTC_NS(_types))(REFLECTC_NS_UPPER(                     \
+                _TYPES__##_container)), 0, NULL, { 0, NULL },                 \
+            (REFLECTC_NS(_from_cb))REFLECTC_NS(_from_##_type) };
 
 #define REFLECTC_PUBLIC  1
 #define REFLECTC_PRIVATE 1
@@ -95,9 +97,9 @@ _from_noop(void *self, struct reflectc *root)
 
 #else
 
-static struct reflectc_mut *
-reflectc_wrapper_prepare_root(struct reflectc_mut *root,
-                              const struct reflectc *root_template,
+static struct REFLECTC_NS(_mut) *
+REFLECTC_NS(_wrapper_prepare_root)(struct REFLECTC_NS(_mut) *root,
+                              const struct REFLECTC_PREFIX *root_template,
                               void *self,
                               size_t elem_size,
                               size_t length)
@@ -123,8 +125,8 @@ reflectc_wrapper_prepare_root(struct reflectc_mut *root,
     return root;
 }
 
-static struct reflectc_mut *
-reflectc_wrapper_alloc_members(size_t members_size, size_t length)
+static struct REFLECTC_NS(_mut) *
+REFLECTC_NS(_wrapper_alloc_members)(size_t members_size, size_t length)
 {
     if (!length || !members_size) {
         return NULL;
@@ -132,15 +134,15 @@ reflectc_wrapper_alloc_members(size_t members_size, size_t length)
     return malloc(members_size * length);
 }
 
-static struct reflectc_mut *
-reflectc_wrapper_prepare_members(struct reflectc_mut *root_entry,
-                                 struct reflectc_mut *members_buf,
+static struct REFLECTC_NS(_mut) *
+REFLECTC_NS(_wrapper_prepare_members)(struct REFLECTC_NS(_mut) *root_entry,
+                                 struct REFLECTC_NS(_mut) *members_buf,
                                  size_t index,
-                                 const struct reflectc *template_members,
+                                 const struct REFLECTC_PREFIX *template_members,
                                  size_t members_size,
                                  size_t n_members)
 {
-    struct reflectc_mut *block = members_buf + index * n_members;
+    struct REFLECTC_NS(_mut) *block = members_buf + index * n_members;
     root_entry->members.array = block;
     root_entry->members.length = n_members;
     memcpy(block, template_members, members_size);
@@ -148,12 +150,13 @@ reflectc_wrapper_prepare_members(struct reflectc_mut *root_entry,
 }
 
 #define _pick_implementation(_container, _type)                               \
-    struct reflectc *                                                         \
-    reflectc_from_##_type(_container _type *self, struct reflectc *_root)     \
+    struct REFLECTC_PREFIX *                                                  \
+    REFLECTC_NS(_from_##_type)(                                               \
+        _container _type *self, struct REFLECTC_PREFIX *_root)                \
     {                                                                         \
-        struct reflectc_mut *root = (struct reflectc_mut *)_root;             \
-        const size_t length = _root ? reflectc_length(_root) : 1;             \
-        root = reflectc_wrapper_prepare_root(root, &_type##__root, self,      \
+        struct REFLECTC_NS(_mut) *root = (struct REFLECTC_NS(_mut) *)_root;   \
+        const size_t length = _root ? REFLECTC_NS(_length)(_root) : 1;        \
+        root = REFLECTC_NS(_wrapper_prepare_root)(root, &_type##__root, self, \
                                              sizeof *self, length);           \
         if (!root) {                                                          \
             return NULL;                                                      \
@@ -161,8 +164,8 @@ reflectc_wrapper_prepare_members(struct reflectc_mut *root_entry,
         if (self) {                                                           \
             static const size_t n_members =                                   \
                 sizeof(_type##__members) / sizeof *_type##__members;          \
-            struct reflectc_mut *members_buf =                                \
-                reflectc_wrapper_alloc_members(sizeof(_type##__members),      \
+            struct REFLECTC_NS(_mut) *members_buf =                           \
+                REFLECTC_NS(_wrapper_alloc_members)(sizeof(_type##__members), \
                                                length);                       \
             size_t i;                                                         \
             if (!members_buf) {                                               \
@@ -172,20 +175,24 @@ reflectc_wrapper_prepare_members(struct reflectc_mut *root_entry,
                 return NULL;                                                  \
             }                                                                 \
             for (i = 0; i < length; ++i) {                                    \
-                struct reflectc_mut *m =                                      \
-                    reflectc_wrapper_prepare_members(root + i, members_buf,   \
-                                                    i, _type##__members,      \
-                                                    sizeof(_type##__members), \
-                                                    n_members);
+                struct REFLECTC_NS(_mut) *m =                                 \
+                    REFLECTC_NS(_wrapper_prepare_members)(root + i,           \
+                                                          members_buf,        \
+                                                          i, _type##__members,\
+                                                          sizeof(             \
+                                                            _type##__members),\
+                                                          n_members);
 #define _pick_member__(_name, _type, _decorator, _dimensions)                 \
                 m->ptr_value = &self->_name;                                  \
                 ++m;
 #define _pick_member_container(_name, _type, _decorator, _dimensions)         \
                 m->ptr_value = &self->_name;                                  \
-                if (reflectc_get_pointer_depth((struct reflectc *)m) <= 2) {  \
-                    void *child = reflectc_resolve((struct reflectc *)m);     \
+                if (REFLECTC_NS(_get_pointer_depth)(                          \
+                        (struct REFLECTC_PREFIX *)m) <= 2) {                  \
+                    void *child =                                             \
+                        REFLECTC_NS(_resolve)((struct REFLECTC_PREFIX *)m);   \
                     if (child) {                                              \
-                        m->from_cb(child, (struct reflectc *)m);              \
+                        m->from_cb(child, (struct REFLECTC_PREFIX *)m);       \
                     }                                                         \
                 }                                                             \
                 ++m;
@@ -195,7 +202,7 @@ reflectc_wrapper_prepare_members(struct reflectc_mut *root_entry,
 #define _pick_container_end(_namespace)                                       \
             }                                                                 \
         }                                                                     \
-        return (struct reflectc *)root;                                       \
+        return (struct REFLECTC_PREFIX *)root;                                \
     }
 
 #define REFLECTC_PUBLIC 1
