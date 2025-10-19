@@ -4,13 +4,13 @@ title Reflect-C Toolchain Flow
 actor Developer
 
 node "Authoring" {
-    component "Recipe Headers\n(.PRE.h)" as Recipes
+    component "Recipe Headers\n(.recipe.h)" as Recipes
 }
 
 node "Build Helpers" {
     component "reflect-c.mk"
     component "reflect-c_EXPAND_COMMENTS" as Expand
-    component "reflect-c_RECIPES.PRE.h\n(roles)" as RecipesPre
+    component "reflect-c_RECIPES.recipe.h\n(roles)" as RecipesPre
 }
 
 node "Compilation" {

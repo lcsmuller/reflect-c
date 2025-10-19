@@ -14,11 +14,11 @@ API_DIR = api
 OUT     = reflect-c_GENERATED
 DFLAGS  = -DREFLECTC_WRAPPER
 
-# Convert %.PRE.h -> %.h
-HEADERS_EXPAND       = "$$(echo $(API_DIR)/*.PRE.h | sed -e 's/\.PRE\.h/.h/g')"
+# Convert %.recipe.h -> %.h
+HEADERS_EXPAND       = "$$(echo $(API_DIR)/*.recipe.h | sed -e 's/\.recipe\.h/.h/g')"
 # Join all API_DIR files together
-TEMPFILE        = reflect-c_GENERATED.PRE.h
-TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.PRE.h); for header in $$headers; do echo "\#include \"$$header\"" >> $(TEMPFILE); done
+TEMPFILE        = reflect-c_GENERATED.recipe.h
+TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.recipe.h); for header in $$headers; do echo "\#include \"$$header\"" >> $(TEMPFILE); done
 # Build reflect-c.mk with the correct variables
 BUILD = $(MAKE) OUT_NO_EXT=$(OUT) DFLAGS="$(DFLAGS)" -f reflect-c.mk
 

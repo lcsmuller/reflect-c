@@ -1,6 +1,6 @@
 # Recipe Format Reference
 
-This document explains how to describe your types so that Reflect-C can generate reflection metadata. Recipes are plain headers with a `.PRE.h` suffix that remain safe to include in normal compilation units; during generation they are replayed multiple times under different macro definitions.
+This document explains how to describe your types so that Reflect-C can generate reflection metadata. Recipes are plain headers with a `.recipe.h` suffix that remain safe to include in normal compilation units; during generation they are replayed multiple times under different macro definitions.
 
 ## Goals
 
@@ -10,15 +10,15 @@ This document explains how to describe your types so that Reflect-C can generate
 
 ## File Layout
 
-Put your recipes under `api/` (the default path consumed by `make gen`). Each file should end with `.PRE.h` so the helper makefile can pick it up automatically.
+Put your recipes under `api/` (the default path consumed by `make gen`). Each file should end with `.recipe.h` so the helper makefile can pick it up automatically.
 
 ```text
 api/
-├── domain.PRE.h
-└── messaging.PRE.h
+├── domain.recipe.h
+└── messaging.recipe.h
 ```
 
-The main dispatcher `reflect-c_RECIPES.PRE.h` includes every recipe when the generator runs, so you normally do **not** include recipe files elsewhere yourself.
+The main dispatcher `reflect-c_RECIPES.recipe.h` includes every recipe when the generator runs, so you normally do **not** include recipe files elsewhere yourself.
 
 ## Core Macros
 

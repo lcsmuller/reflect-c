@@ -16,9 +16,9 @@ Reflection-friendly data describes complex C types without hand-written metadata
 
 Reflect-C relies on *recipes*—header fragments that describe your types using a macro DSL. The build system performs four stages:
 
-1. **Collect recipes** - you list your `.PRE.h` recipe files (defaults live under `api/`).
+1. **Collect recipes** - you list your `.recipe.h` recipe files (defaults live under `api/`).
 2. **Expand directives** - `reflect-c_EXPAND_COMMENTS` converts special `/*#! ... */` directives into active code before preprocessing.
-3. **Preprocess with roles** - `reflect-c_RECIPES.PRE.h` pulls in every recipe multiple times with different `REFLECTC_*` flags to emit actual C definitions, lookup tables, and wrapper functions.
+3. **Preprocess with roles** - `reflect-c_RECIPES.recipe.h` pulls in every recipe multiple times with different `REFLECTC_*` flags to emit actual C definitions, lookup tables, and wrapper functions.
 4. **Emit amalgamated sources** - the helper makefile `reflect-c.mk` produces `reflect-c_GENERATED.h/.c` alongside an optional static library `libreflectc.a` for the runtime helpers in `reflect-c.c`.
 
 The pipeline is intentionally pure-C, so the same commands work on any system with an ANSI C compiler.
@@ -35,10 +35,10 @@ The pipeline is intentionally pure-C, so the same commands work on any system wi
 
    This compiles `reflect-c_EXPAND_COMMENTS`, builds the runtime library, and generates amalgamated sources from the sample recipes under `api/`.
 
-1. **Describe your types in a recipe.** Recipes are thin macro invocations that stay valid headers. Place a file like `api/person.PRE.h` in the repository:
+1. **Describe your types in a recipe.** Recipes are thin macro invocations that stay valid headers. Place a file like `api/person.recipe.h` in the repository:
 
    ```c
-   /* person.PRE.h */
+   /* person.recipe.h */
    #ifdef REFLECTC_DEFINITIONS
    /*#!
    #include <stdbool.h>
@@ -111,7 +111,7 @@ Generated recipe output inherits these settings as long as the same macros are p
 
 ## Recipe syntax
 
-Recipes live in `.PRE.h` files that can be included safely in regular code. Each entry is a macro of the shape
+Recipes live in `.recipe.h` files that can be included safely in regular code. Each entry is a macro of the shape
 
 ```c
 PUBLIC(container_kind, type_name, member_count, (members...))
@@ -186,7 +186,7 @@ reflectc_set_member(bar_ref, number_pos, &new_value, sizeof new_value);
 ### Extending scalar tags
 
 ```c
-/* hooks.PRE.h */
+/* hooks.recipe.h */
 #ifdef REFLECTC_DEFINITIONS
 /*#!
 #include <stdbool.h>
@@ -267,7 +267,7 @@ Commit the regenerated header if you want downstream builds to avoid running the
        ```
 
     Alternatively, you can copy `reflect-c/` into `third_party/reflect-c` (any location works as long as your build can reach the files).
-2. **Author your recipes** - place your own `.PRE.h` files (e.g., `recipes/player.PRE.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and include supporting headers inside the `/*#! ... */` blocks.
+2. **Author your recipes** - place your own `.recipe.h` files (e.g., `recipes/player.recipe.h`) in a directory you control. Use the macro DSL to describe each struct/union/enum, and include supporting headers inside the `/*#! ... */` blocks.
 3. **Generate metadata during your build** - invoke the helper makefile with your recipe directory and desired output stem. For example:
 
    ```sh

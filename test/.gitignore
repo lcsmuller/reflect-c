@@ -5,7 +5,7 @@
 !Makefile
 !api
 !api/.clang-format
-!api/*.PRE.h
+!api/*.recipe.h
 !*.h
 !*.c
 !json-build

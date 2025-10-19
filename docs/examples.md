@@ -9,7 +9,7 @@ This guide complements the README by showing how the generated metadata can be u
 Before using the runtime API, you need a properly formatted recipe. Here's a complete example showing the required `/*#! ... */` directive pattern:
 
 ```c
-/* api/bar.PRE.h */
+/* api/bar.recipe.h */
 #ifdef REFLECTC_DEFINITIONS
 /*#!
 #include <stdbool.h>

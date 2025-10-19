@@ -7,8 +7,8 @@
 # example: /*#! #define HELLO 1 */  becomes  #define HELLO 1
 EXPAND_COMMENTS = reflect-c_EXPAND_COMMENTS
 
-RECIPES               = reflect-c_RECIPES.PRE.h
-RECIPES_NO_EXT_EXPAND = "$$(echo $(RECIPES) | sed -e 's/\.PRE\.h//')"
+RECIPES               = reflect-c_RECIPES.recipe.h
+RECIPES_NO_EXT_EXPAND = "$$(echo $(RECIPES) | sed -e 's/\.recipe\.h//')"
 
 # Resulting single-file amalgamations after preprocessing input file
 OUT_C          = $(OUT_NO_EXT).c
@@ -20,9 +20,9 @@ CFLAGS   += -I. -Wall -Wextra -Wpedantic -std=c89
 CPP       = cc -E # If you run into issues, try changing this to 'cpp'
 CPPFLAGS += -nostdinc -P -CC
 
-# Convert 'foo/bar_baz-tuna.PRE.h' -> 'FOO_BAR_BAZ_TUNA_H'
+# Convert 'foo/bar_baz-tuna.recipe.h' -> 'FOO_BAR_BAZ_TUNA_H'
 # TODO: Evaluate if the sed expressions can be joined (see https://unix.stackexchange.com/a/145409)
-HEADER_TAG_EXPAND   = "$$(echo '$<' | sed -e 's/\(.*\)\.PRE.h/\1/' | sed -e 's/\//_/g' | sed -e 's/-/_/g' | tr '[:lower:]' '[:upper:]')_H"
+HEADER_TAG_EXPAND   = "$$(echo '$<' | sed -e 's/\(.*\)\.recipe.h/\1/' | sed -e 's/\//_/g' | sed -e 's/-/_/g' | tr '[:lower:]' '[:upper:]')_H"
 # Doxygen file description
 DOXYGEN_DESC_EXPAND = "/**\n * @file $@\n * @author Reflect-C\n * @brief Reflect-C generated code\n */\n"
 
@@ -49,8 +49,8 @@ headers: $(HEADERS)
 
 $(HEADERS): $(RECIPES) $(EXPAND_COMMENTS)
 
-.SUFFIXES: .PRE.h .h
-.PRE.h.h:
+.SUFFIXES: .recipe.h .h
+.recipe.h.h:
 	@ echo "Generating $@"
 	@ echo $(DOXYGEN_DESC_EXPAND) > $@
 	@ echo "#ifndef $(HEADER_TAG_EXPAND)" >> $@
