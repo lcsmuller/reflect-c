@@ -11,8 +11,9 @@ RECIPES               = reflect-c_RECIPES.PRE.h
 RECIPES_NO_EXT_EXPAND = "$$(echo $(RECIPES) | sed -e 's/\.PRE\.h//')"
 
 # Resulting single-file amalgamations after preprocessing input file
-OUT_C  = $(OUT_NO_EXT).c
-OUT_H  = $(OUT_NO_EXT).h
+OUT_C          = $(OUT_NO_EXT).c
+OUT_H          = $(OUT_NO_EXT).h
+OUT_H_BASENAME = "$$(basename $(OUT_H))"
 
 CFLAGS   ?= -O2
 CFLAGS   += -I. -Wall -Wextra -Wpedantic -std=c89
@@ -39,7 +40,7 @@ $(OUT_H): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "\n#endif /* $(HEADER_TAG_EXPAND) */" >> $@
 $(OUT_C): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "Adding forward definitions to $@"
-	@ echo "#include \"$(OUT_H)\"" > $@
+	@ echo "#include \"$(OUT_H_BASENAME)\"" > $@
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_FORWARD -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	@ echo "Generating $@"	
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
