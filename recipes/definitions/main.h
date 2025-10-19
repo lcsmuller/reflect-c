@@ -1,5 +1,8 @@
 #ifdef REFLECTC_DEFINITIONS
 
+#define REFLECTC_PRE_HOOKS
+#include "reflect-c_EXPAND.h"
+
 /*#!
 #include "reflect-c.h"
 
@@ -80,6 +83,9 @@
 #undef _pick_container
 #undef _pick_member
 #undef _pick_container_end
+
+#define REFLECTC_POST_HOOKS
+#include "reflect-c_EXPAND.h"
 
 /*#!
 #undef _

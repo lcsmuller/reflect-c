@@ -6,7 +6,6 @@
 
 #define REFLECTC_PREFIX       rc_compile
 #define REFLECTC_PREFIX_UPPER RC_COMPILE
-#include "reflect-c.h"
 #include "reflect-c_GENERATED.h"
 
 STATIC_ASSERT(sizeof(&rc_compile_get) > 0, rc_compile_get_symbol);
@@ -21,7 +20,7 @@ STATIC_ASSERT(sizeof(&rc_compile_from_baz) > 0, rc_compile_from_api_symbol);
 STATIC_ASSERT(RC_COMPILE_LOOKUP__bar_MAX == 3, bar_member_count);
 STATIC_ASSERT(RC_COMPILE_LOOKUP__baz_MAX == 5, baz_member_count);
 STATIC_ASSERT(RC_COMPILE_LOOKUP__foo_MAX == 4, foo_member_count);
-STATIC_ASSERT(RC_COMPILE_LOOKUP__hooks_MAX == 4, hooks_member_count);
+STATIC_ASSERT(RC_COMPILE_LOOKUP__tuna_MAX == 4, tuna_member_count);
 
 /* Spill-free lookup indices emitted by REFLECTC_LOOKUP. */
 STATIC_ASSERT(REFLECTC_LOOKUP(struct, bar, boolean, NULL) == 0,

@@ -385,12 +385,12 @@ check_resolve_null_chain(void)
 TEST
 check_extended_type_metadata(void)
 {
-    struct hooks sample = { 21, true, (size_t)512, (unsigned long)7 };
-    struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
-    size_t words_pos = REFLECTC_LOOKUP(struct, hooks, words, wrapper);
+    struct tuna sample = { 21, true, (size_t)512, (unsigned long)7 };
+    struct reflectc *wrapper = reflectc_from_tuna(&sample, NULL);
+    size_t words_pos = REFLECTC_LOOKUP(struct, tuna, words, wrapper);
     const struct reflectc *words_member = &wrapper->members.array[words_pos];
     const words_t *words_ptr = reflectc_get_member(wrapper, words_pos);
-    size_t numbers_pos = REFLECTC_LOOKUP(struct, hooks, numbers, wrapper);
+    size_t numbers_pos = REFLECTC_LOOKUP(struct, tuna, numbers, wrapper);
     const struct reflectc *numbers_member =
         &wrapper->members.array[numbers_pos];
     const numbers_t *numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
@@ -407,7 +407,7 @@ check_extended_type_metadata(void)
     ASSERT_NEQ(NULL, numbers_ptr);
     ASSERT_EQ(sample.numbers, *numbers_ptr);
 
-    reflectc_from_hooks(NULL, wrapper);
+    reflectc_from_tuna(NULL, wrapper);
     words_member = &wrapper->members.array[words_pos];
     words_ptr = reflectc_get_member(wrapper, words_pos);
     ASSERT_NEQ(NULL, words_member);

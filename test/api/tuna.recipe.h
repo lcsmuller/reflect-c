@@ -1,0 +1,27 @@
+#ifdef REFLECTC_PRE_HOOKS
+/*#!
+#include <stdbool.h>
+#include <stddef.h>
+
+typedef size_t words_t;
+typedef unsigned long numbers_t;
+*/
+#endif
+
+PUBLIC(struct, tuna, 4, (
+    (_, _, int, _, value, _),
+    (_, _, bool, _, flag, _),
+    (_, _, words_t, _, words, _),
+    (_, _, numbers_t, _, numbers, _)
+    )
+)
+
+#ifdef REFLECTC_POST_HOOKS
+/*#!
+enum {
+    REFLECTC_NS_UPPER(_TYPES__words_t) = REFLECTC_NS_UPPER(_TYPES__EXTEND),
+    REFLECTC_NS_UPPER(_TYPES__numbers_t)
+};
+*/
+#endif
+

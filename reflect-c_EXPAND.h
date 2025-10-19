@@ -54,3 +54,6 @@
 #undef REFLECTC_ENUM_END
 #undef RCF
 #undef RCE
+
+#undef REFLECTC_PRE_HOOKS
+#undef REFLECTC_POST_HOOKS

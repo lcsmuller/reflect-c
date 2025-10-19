@@ -1,4 +1,4 @@
-#ifdef REFLECTC_DEFINITIONS
+#ifdef REFLECTC_PRE_HOOKS
 /*#!
 #include <stdbool.h>
 #define BYE 2
