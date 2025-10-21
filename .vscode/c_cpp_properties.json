@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}"
+            ],
+            "forcedInclude": [
+                "${workspaceFolder}/reflect-c_intellisense.h"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c89"
+        }
+    ],
+    "version": 4
+}

@@ -109,6 +109,39 @@ cc -DREFLECTC_PREFIX=rc_compile -DREFLECTC_PREFIX_UPPER=RC_COMPILE ...
 
 Generated recipe output inherits these settings as long as the same macros are provided during the metadata build (see `test/compile.c` for a concrete example), keeping runtime and generated symbols in sync.
 
+## VS Code integration
+
+Reflect-C recipes rely on custom macros such as `PUBLIC`/`PRIVATE`. If you use VS Code and want IntelliSense to understand those macros, choose one of the following approaches:
+
+- **One-off include while editing**
+  Add the stub header at the top of a recipe while you work on it:
+
+  ```c
+  #include "reflect-c_intellisense.h" /* IDE-only */
+  ```
+
+  Remove the include before committing, or wrap it in `#ifdef __INTELLISENSE__` so builds ignore it.
+
+- **Project-wide configuration**
+  Force-include the stub header so every recipe file picks it up automatically:
+
+  ```jsonc
+  // .vscode/c_cpp_properties.json
+  {
+      "configurations": [
+          {
+              "name": "Linux",
+              "includePath": ["${workspaceFolder}"],
+              "forcedInclude": ["${workspaceFolder}/reflect-c_intellisense.h"],
+              "compilerPath": "/usr/bin/gcc",
+              "cStandard": "c89"
+          }
+      ]
+  }
+  ```
+
+  With this in place you don’t need to touch the individual recipe files; IntelliSense sees the macro definitions on its own.
+
 ## Recipe syntax
 
 Recipes live in `.recipe.h` files that can be included safely in regular code. Each entry is a macro of the shape

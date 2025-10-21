@@ -1,6 +1,8 @@
 # Ignore all
 *
 # But these
+!.vscode
+!.vscode/c_cpp_properties.json
 !.gitignore
 !.clang-format
 !README.md
@@ -16,6 +18,7 @@
 !reflect-c_TUPLE.h
 !reflect-c.c
 !reflect-c.h
+!reflect-c_intellisense.h
 !reflect-c.mk
 !Makefile
 !test
