@@ -6,9 +6,9 @@
 #endif
 
 PUBLIC(struct, foo, 4, (
-        (_, _, bool, _, boolean, _),
-        (_, _, int, _, number, [4]),
-        (_, _, char, *, string, _),
-        (_, _, void, *, native, _)
+        (_, _, bool, _, boolean, _, 0ul),
+        (_, _, int, _, number, [4], 0ul),
+        (_, _, char, *, string, _, 0ul),
+        (_, _, void, *, native, _, 0ul)
     )
 )

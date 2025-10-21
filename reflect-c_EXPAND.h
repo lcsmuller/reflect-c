@@ -35,7 +35,7 @@
 
 #ifndef RCF
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
-            _dimensions)
+            _dimensions, _attrs)
 #endif
 
 #ifndef RCE

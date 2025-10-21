@@ -45,6 +45,7 @@ typedef struct REFLECTC_PREFIX *(*REFLECTC_NS(_from_cb))(
         const size_t length;                                                  \
     } qualifier, decorator, name, dimensions;                                 \
     const enum REFLECTC_NS(_types) type;                                      \
+    _qualifier unsigned long attrs;                                           \
     _qualifier size_t length;                                                 \
     _qualifier void *_qualifier ptr_value;                                    \
     _qualifier struct {                                                       \

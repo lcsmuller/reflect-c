@@ -43,18 +43,19 @@ Structs and unions share the same tuple signature:
 - **decorator** - pointer suffix (`*`, `**`, etc.) or `_` for scalars.
 - **name** - member name.
 - **dimensions** - array declarators such as `[4]` or `_` when absent.
+- **attrs** - user-defined attribute mask (any `unsigned long` constant expression, e.g. `0ul`).
 
 Examples:
 
 ```c
 PUBLIC(struct, person, 3, (
-    (_, _, char, *, name, _),
-    (_, _, int, _, age, _),
-    (_, _, struct, address, _, address, _)
+    (_, _, char, *, name, _, 0ul),
+    (_, _, int, _, age, _, 0ul),
+    (_, struct, address, _, address, _, 0ul)
 ))
 
 PRIVATE(struct, bucket, 1, (
-    (_, _, int, _, items, [32])
+    (_, _, int, _, items, [32], 0ul)
 ))
 ```
 
@@ -87,8 +88,8 @@ The `reflect-c_EXPAND_COMMENTS` utility strips the `/*#!` prefix, effectively "a
 #endif
 
 PUBLIC(struct, person, 2, (
-    (_, _, char, *, name, _),
-    (_, _, bool, _, active, _)
+    (_, _, char, *, name, _, 0ul),
+    (_, _, bool, _, active, _, 0ul)
 ))
 ```
 

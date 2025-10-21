@@ -23,6 +23,18 @@
 #define TEST_DEBUG_PRINT(...)
 #endif
 
+#ifndef TEST_ATTR_NULLABLE
+#define TEST_ATTR_NULLABLE (1ul << 0)
+#endif
+
+static int test_nullable_violation;
+
+static int
+is_nullable(const struct reflectc *member)
+{
+    return member && (member->attrs & TEST_ATTR_NULLABLE);
+}
+
 static void
 json_stringify(struct jsonb *jb,
                const struct reflectc *member,
@@ -31,6 +43,9 @@ json_stringify(struct jsonb *jb,
 {
     const void *value = reflectc_get(member);
     if (reflectc_is_null(member)) {
+        if (!is_nullable(member)) {
+            test_nullable_violation = 1;
+        }
         jsonb_null(jb, buf, bufsize);
         return;
     }
@@ -77,6 +92,26 @@ json_stringify(struct jsonb *jb,
 }
 
 static void
+json_parse_assign_null(const struct reflectc *member)
+{
+    const void *value = NULL;
+    unsigned depth = reflectc_get_pointer_depth(member);
+
+    TEST_DEBUG_PRINT("Assign null depth=%u attrs=%lu\n", depth,
+                     member ? member->attrs : 0ul);
+    if (depth < 2) {
+        return;
+    }
+    if (!is_nullable(member)) {
+        test_nullable_violation = 1;
+        return;
+    }
+    memcpy((void *)member->ptr_value, &value, member->size);
+    TEST_DEBUG_PRINT("Assign null done is_null=%d\n",
+                     reflectc_is_null(member));
+}
+
+static void
 json_parse_impl(const jsmnf_pair *p,
                 const char *json,
                 size_t length,
@@ -116,13 +151,9 @@ json_parse_impl(const jsmnf_pair *p,
             TEST_DEBUG_PRINT("Parsing boolean: %s\n",
                              value ? "true" : "false");
         } break;
-        case 'n': {
-            const void *value = NULL;
-            if (reflectc_get_pointer_depth(member) < 2) {
-                return;
-            }
-            reflectc_set(member, &value, sizeof(value));
-        } break;
+        case 'n':
+            json_parse_assign_null(member);
+            break;
         default: {
             switch (member->type) {
             case REFLECTC_TYPES__float: {
@@ -179,6 +210,10 @@ json_parse_impl(const jsmnf_pair *p,
                 const jsmnf_pair *p_m = jsmnf_find(p, p->buckets[i].key.buf,
                                                    p->buckets[i].key.length);
                 const struct reflectc *m = member->members.array + pos;
+                if (!p_m) {
+                    json_parse_assign_null(m);
+                    continue;
+                }
                 TEST_DEBUG_PRINT("2. Parsing field: %.*s\n",
                                  (int)p->buckets[i].key.length,
                                  p->buckets[i].key.buf);
@@ -228,7 +263,7 @@ check_json_serializer(void)
         "{\"a\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
         "\"b\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
         "\"c\":{\"boolean\":true,\"number\":42,\"string\":\"hello world\"},"
-        "\"d\":\"hello world\",\"e\":1}";
+        "\"d\":null,\"e\":1}";
     char got_json[sizeof(expected_json)] = { 0 };
 
     jsmnf_loader expected_l, got_l;
@@ -242,11 +277,16 @@ check_json_serializer(void)
 
     // Generate the JSON string
     struct bar a = { true, 42, "hello world" }, *aa = &a, **aaa = &aa;
-    struct baz baz = { &a, &a, &aaa, "hello world", LEVELS_ONE };
+    struct baz baz = { &a, &a, &aaa, NULL, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
+    const struct reflectc *d_member = &wrapped_baz->members.array[d_pos];
+    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
     struct jsonb jb;
     jsonb_init(&jb);
+    test_nullable_violation = 0;
     json_stringify(&jb, wrapped_baz, got_json, sizeof(got_json));
+    ASSERT_EQ(0, test_nullable_violation);
 
     // Tokenize the generated JSON string
     jsmnf_init(&got_l);
@@ -301,8 +341,13 @@ check_json_parser(void)
 
     struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
     struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
+    const struct reflectc *d_member = &wrapped_baz->members.array[d_pos];
+    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
 
+    test_nullable_violation = 0;
     json_parse(json, sizeof(json) - 1, wrapped_baz);
+    ASSERT_EQ(0, test_nullable_violation);
 
     ASSERT_EQ(true, a.boolean);
     ASSERT_EQ(42, a.number);
@@ -322,6 +367,97 @@ check_json_parser(void)
     reflectc_cleanup(wrapped_baz);
 
     free(a.string);
+    free(b.string);
+    free(c.string);
+
+    PASS();
+}
+
+TEST
+check_json_serializer_rejects_nonnullable_null(void)
+{
+    struct bar member = { true, 7, "hydrate" };
+    struct bar *member_ptr = &member;
+    struct bar **member_ptr_ptr = &member_ptr;
+    struct bar ***member_ptr_ptr_ptr = &member_ptr_ptr;
+    struct baz baz = { NULL, &member, member_ptr_ptr_ptr, "nullable",
+                       LEVELS_ONE };
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    char got_json[256] = { 0 };
+    struct jsonb jb;
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+
+    jsonb_init(&jb);
+    test_nullable_violation = 0;
+    json_stringify(&jb, wrapped_baz, got_json, sizeof(got_json));
+    ASSERT_EQ(1, test_nullable_violation);
+
+    reflectc_cleanup(wrapped_baz);
+
+    PASS();
+}
+
+TEST
+check_json_parser_nullable_null(void)
+{
+    static const char json[] =
+        "{\"a\":{\"boolean\":true,\"number\":1,\"string\":\"keep\"},"
+        "\"b\":{\"boolean\":false,\"number\":2,\"string\":\"value\"},"
+        "\"c\":{\"boolean\":true,\"number\":3,\"string\":\"value\"},"
+        "\"d\":null,\"e\":2}";
+    struct bar a = { 0 }, b = { 0 }, c = { 0 }, *cc = &c, **ccc = &cc;
+    char d[16] = "initial";
+    struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+    size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
+    const struct reflectc *d_member = &wrapped_baz->members.array[d_pos];
+    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
+    unsigned depth = reflectc_get_pointer_depth(d_member);
+    ASSERT_EQ(2u, depth);
+
+    test_nullable_violation = 0;
+    json_parse(json, sizeof(json) - 1, wrapped_baz);
+    ASSERT_EQ(0, test_nullable_violation);
+    ASSERT_NEQ(0, reflectc_is_null(d_member));
+    ASSERT_EQ(NULL, baz.d);
+    ASSERT_EQ(LEVELS_TWO, baz.e);
+
+    reflectc_cleanup(wrapped_baz);
+
+    free(a.string);
+    free(b.string);
+    free(c.string);
+
+    PASS();
+}
+
+TEST
+check_json_parser_rejects_nonnullable_null(void)
+{
+    static const char json[] =
+        "{\"a\":null,"
+        "\"b\":{\"boolean\":true,\"number\":5,\"string\":\"present\"},"
+        "\"c\":{\"boolean\":true,\"number\":6,\"string\":\"present\"},"
+        "\"d\":\"keep\",\"e\":1}";
+    struct bar a = { true, 7, "orig" }, b = { 0 }, c = { 0 }, *cc = &c,
+               **ccc = &cc;
+    char d[16] = "keep";
+    struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
+    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+
+    test_nullable_violation = 0;
+    json_parse(json, sizeof(json) - 1, wrapped_baz);
+    ASSERT_EQ(1, test_nullable_violation);
+    ASSERT_EQ(&a, baz.a);
+    ASSERT_STR_EQ("keep", d);
+
+    reflectc_cleanup(wrapped_baz);
+
     free(b.string);
     free(c.string);
 
@@ -544,7 +680,10 @@ check_helper_utilities(void)
 SUITE(wrapper)
 {
     RUN_TEST(check_json_serializer);
+    RUN_TEST(check_json_serializer_rejects_nonnullable_null);
     RUN_TEST(check_json_parser);
+    RUN_TEST(check_json_parser_nullable_null);
+    RUN_TEST(check_json_parser_rejects_nonnullable_null);
     RUN_TEST(check_resolve_and_expand);
     RUN_TEST(check_resolve_null_chain);
     RUN_TEST(check_extended_type_metadata);

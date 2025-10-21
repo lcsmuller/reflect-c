@@ -14,7 +14,7 @@ The following allows symbols usage without REFLECTC_ prefix
 #endif /* REFLECTC_USE_PREFIX */
 
 #define REFLECTC_RCF_SPREAD(_name, _member)                                   \
-    RCF REFLECTC_TUPLE_PREPEND(1, (_name), 6, _member)
+    RCF REFLECTC_TUPLE_PREPEND(1, (_name), 7, _member)
 #define REFLECTC_RCE_SPREAD(_name, _enumerator)                               \
     RCE REFLECTC_TUPLE_PREPEND(1, (_name), 3, _enumerator)
 

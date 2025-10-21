@@ -2,28 +2,29 @@
 /*#!
 #include <stdbool.h>
 #define HELLO 1
+#define TEST_ATTR_NULLABLE (1ul << 0)
 */
 #endif
 
 PRIVATE(struct, bar, 3, (
-        (_, _, bool, _, boolean, _),
-        (_, _, int, _, number, _),
-        (_, _, char,  *, string, _)
+        (_, _, bool, _, boolean, _, 0ul),
+        (_, _, int, _, number, _, 0ul),
+        (_, _, char,  *, string, _, 0ul)
     )
 )
 
 PUBLIC(struct, baz, 5, (
-        (_, struct, bar, *, a, _),
-        (_, struct, bar, *, b, _),
-        (_, struct, bar, ***, c, _),
-        (_, _, char, *, d, _),
-        (_, enum, levels, _, e, _)
+        (_, struct, bar, *, a, _, 0ul),
+        (_, struct, bar, *, b, _, 0ul),
+        (_, struct, bar, ***, c, _, 0ul),
+        (_, _, char, *, d, _, TEST_ATTR_NULLABLE),
+        (_, enum, levels, _, e, _, 0ul)
     )
 )
 
 PUBLIC(union, barbaz, 2, (
-        (_, struct, bar, _, bar, _),
-        (_, struct, baz, _, baz, _)
+        (_, struct, bar, _, bar, _, 0ul),
+        (_, struct, baz, _, baz, _, 0ul)
     )
 )
 

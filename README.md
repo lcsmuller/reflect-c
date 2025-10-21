@@ -46,17 +46,17 @@ The pipeline is intentionally pure-C, so the same commands work on any system wi
    #endif
 
    PUBLIC(struct, person, 4, (
-       (_, _, char, *, name, _),
-       (_, _, int, _, age, _),
-       (_, _, bool, _, active, _),
-       (_, _, char, *, email, _)
+       (_, _, char, *, name, _, 0ul),
+       (_, _, int, _, age, _, 0ul),
+       (_, _, bool, _, active, _, 0ul),
+       (_, _, char, *, email, _, 0ul)
    ))
    ```
 
    A few macros worth knowing (see [Recipe syntax](#recipe-syntax) for details):
 
    - `PUBLIC` / `PRIVATE` chooses whether the generated symbols are exported.
-   - Tuple columns encode qualifier, container (`struct`, `union`, `enum`), raw type, pointer decoration, member name, and array dimensions.
+   - Tuple columns encode qualifier, container (`struct`, `union`, `enum`), raw type, pointer decoration, member name, array dimensions, and a user-provided attribute mask (`unsigned long`).
    - **`/*#! ... */` directives** - **Required** for any `#include` or `#define` statements that the generator needs to see. These directives become active during generation but remain comments in normal compilation units. Without them, the preprocessor never sees your helper includes and generation fails silently.
 
 1. **Regenerate metadata.**

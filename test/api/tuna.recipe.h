@@ -9,10 +9,10 @@ typedef unsigned long numbers_t;
 #endif
 
 PUBLIC(struct, tuna, 4, (
-    (_, _, int, _, value, _),
-    (_, _, bool, _, flag, _),
-    (_, _, words_t, _, words, _),
-    (_, _, numbers_t, _, numbers, _)
+    (_, _, int, _, value, _, 0ul),
+    (_, _, bool, _, flag, _, 0ul),
+    (_, _, words_t, _, words, _, 0ul),
+    (_, _, numbers_t, _, numbers, _, 0ul)
     )
 )
 
@@ -24,4 +24,3 @@ enum {
 };
 */
 #endif
-
