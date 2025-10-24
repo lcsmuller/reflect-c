@@ -30,7 +30,7 @@ static int test_nullable_violation;
 static int
 is_nullable(const struct reflectc_wrap *member)
 {
-    return member && (member->attrs & TEST_ATTR_NULLABLE);
+    return member && (member->tmpl->attrs & TEST_ATTR_NULLABLE);
 }
 
 static void
@@ -48,22 +48,22 @@ json_stringify(struct jsonb *jb,
         return;
     }
 
-    switch (member->type) {
-    case REFLECTC_TYPES__char:
+    switch (member->tmpl->type) {
+    case REFLECTC_TYPES(char):
         jsonb_string(jb, buf, bufsize, (const char *)value,
                      strlen((const char *)value));
         break;
-    case REFLECTC_TYPES__int:
+    case REFLECTC_TYPES(int):
         jsonb_number(jb, buf, bufsize, *(const int *)value);
         break;
-    case REFLECTC_TYPES__bool:
+    case REFLECTC_TYPES(bool):
         jsonb_bool(jb, buf, bufsize, *(const bool *)value);
         break;
-    case REFLECTC_TYPES__enum:
+    case REFLECTC_TYPES(enum):
         jsonb_number(jb, buf, bufsize, (double)*(const int *)value);
         break;
-    case REFLECTC_TYPES__struct:
-    case REFLECTC_TYPES__union: {
+    case REFLECTC_TYPES(struct):
+    case REFLECTC_TYPES(union): {
         if (reflectc_length(member) > 1) {
             jsonb_array(jb, buf, bufsize);
             for (size_t i = 0; i < member->length; ++i) {
@@ -75,7 +75,8 @@ json_stringify(struct jsonb *jb,
             jsonb_object(jb, buf, bufsize);
             for (size_t i = 0; i < member->members.length; ++i) {
                 const struct reflectc_wrap *f = &member->members.array[i];
-                jsonb_key(jb, buf, bufsize, f->name.buf, f->name.length);
+                jsonb_key(jb, buf, bufsize, f->tmpl->name.buf,
+                          f->tmpl->name.length);
                 json_stringify(jb, f, buf, bufsize);
             }
             jsonb_object_pop(jb, buf, bufsize);
@@ -93,7 +94,7 @@ json_parse_assign_null(const struct reflectc_wrap *member)
     unsigned depth = reflectc_get_pointer_depth(member);
 
     TEST_DEBUG_PRINT("Assign null depth=%u attrs=%lu\n", depth,
-                     member ? member->attrs : 0ul);
+                     member ? member->tmpl->attrs : 0ul);
     if (depth < 2) {
         return;
     }
@@ -101,7 +102,7 @@ json_parse_assign_null(const struct reflectc_wrap *member)
         test_nullable_violation = 1;
         return;
     }
-    memcpy((void *)member->ptr_value, &value, member->size);
+    memcpy((void *)member->ptr_value, &value, member->tmpl->size);
     TEST_DEBUG_PRINT("Assign null done is_null=%d\n",
                      reflectc_is_null(member));
 }
@@ -118,15 +119,15 @@ json_parse_impl(struct reflectc *registry,
     }
 
     if (p->k) {
-        TEST_DEBUG_PRINT("Type: %d, Length: %zu, Key: %.*s\n", p->v->type,
-                         p->length, p->k->end - p->k->start,
+        TEST_DEBUG_PRINT("Type: %d, Length: %zu, Key: %.*s\n",
+                         p->v->tmpl->type, p->length, p->k->end - p->k->start,
                          json + p->k->start);
     }
     TEST_DEBUG_PRINT("Value: %.*s\n", p->v->end - p->v->start,
                      json + p->v->start);
     switch (p->v->type) {
     case JSMN_STRING: {
-        if (member->type != REFLECTC_TYPES__char
+        if (member->tmpl->type != REFLECTC_TYPES(char)
             || reflectc_get_pointer_depth(member) != 2)
         {
             return;
@@ -140,7 +141,7 @@ json_parse_impl(struct reflectc *registry,
         case 't':
         case 'f': {
             const bool value = json[p->v->start] == 't';
-            if (member->type != REFLECTC_TYPES__bool) {
+            if (member->tmpl->type != REFLECTC_TYPES(bool)) {
                 return;
             }
             reflectc_set(member, &value, sizeof(value));
@@ -151,33 +152,33 @@ json_parse_impl(struct reflectc *registry,
             json_parse_assign_null(member);
             break;
         default: {
-            switch (member->type) {
-            case REFLECTC_TYPES__float: {
+            switch (member->tmpl->type) {
+            case REFLECTC_TYPES(float): {
                 const float value = strtof(json + p->v->start, NULL);
                 reflectc_set(member, &value, sizeof(value));
             } break;
-            case REFLECTC_TYPES__double: {
+            case REFLECTC_TYPES(double): {
                 const double value = strtod(json + p->v->start, NULL);
                 reflectc_set(member, &value, sizeof(value));
             } break;
-            case REFLECTC_TYPES__int: {
+            case REFLECTC_TYPES(int): {
                 const int value = (int)strtol(json + p->v->start, NULL, 10);
                 reflectc_set(member, &value, sizeof(value));
             } break;
-            case REFLECTC_TYPES__enum: {
+            case REFLECTC_TYPES(enum): {
                 const int value = (int)strtol(json + p->v->start, NULL, 10);
-                reflectc_set(member, &value, member->size);
+                reflectc_set(member, &value, member->tmpl->size);
             } break;
-            case REFLECTC_TYPES__long: {
+            case REFLECTC_TYPES(long): {
                 const long value = strtol(json + p->v->start, NULL, 10);
                 reflectc_set(member, &value, sizeof(value));
             } break;
-            case REFLECTC_TYPES__short: {
+            case REFLECTC_TYPES(short): {
                 const short value =
                     (short)strtol(json + p->v->start, NULL, 10);
                 reflectc_set(member, &value, sizeof(value));
             } break;
-            case REFLECTC_TYPES__char: {
+            case REFLECTC_TYPES(char): {
                 const char value = (char)strtol(json + p->v->start, NULL, 10);
                 reflectc_set(member, &value, sizeof(value));
             } break;
@@ -189,10 +190,10 @@ json_parse_impl(struct reflectc *registry,
         break;
     }
     case JSMN_OBJECT:
-        if (member->type != REFLECTC_TYPES__struct) {
+        if (member->tmpl->type != REFLECTC_TYPES(struct)) {
             TEST_DEBUG_PRINT(
                 "Expected a struct type for JSON object\nGot: %d\n",
-                member->type);
+                member->tmpl->type);
             return;
         }
         reflectc_expand(registry, member);
@@ -282,7 +283,7 @@ check_json_serializer(void)
         reflectc_from_baz(registry, &baz, NULL);
     size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
     const struct reflectc_wrap *d_member = &wrapped_baz->members.array[d_pos];
-    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
+    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->tmpl->attrs);
     struct jsonb jb;
     jsonb_init(&jb);
     test_nullable_violation = 0;
@@ -347,7 +348,7 @@ check_json_parser(void)
         reflectc_from_baz(registry, &baz, NULL);
     size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
     const struct reflectc_wrap *d_member = &wrapped_baz->members.array[d_pos];
-    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
+    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->tmpl->attrs);
 
     test_nullable_violation = 0;
     json_parse(registry, json, sizeof(json) - 1, wrapped_baz);
@@ -423,7 +424,7 @@ check_json_parser_nullable_null(void)
     ASSERT_NEQ(NULL, wrapped_baz);
     size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
     const struct reflectc_wrap *d_member = &wrapped_baz->members.array[d_pos];
-    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
+    ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->tmpl->attrs);
     unsigned depth = reflectc_get_pointer_depth(d_member);
     ASSERT_EQ(2u, depth);
 
@@ -555,15 +556,15 @@ check_extended_type_metadata(void)
         &wrapper->members.array[numbers_pos];
     const numbers_t *numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
 
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__words_t,
-              words_member->type);
-    ASSERT_EQ(sizeof(words_t), words_member->size);
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES(words_t),
+              words_member->tmpl->type);
+    ASSERT_EQ(sizeof(words_t), words_member->tmpl->size);
     ASSERT_NEQ(NULL, words_ptr);
     ASSERT_EQ(sample.words, *words_ptr);
 
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__numbers_t,
-              numbers_member->type);
-    ASSERT_EQ(sizeof(numbers_t), numbers_member->size);
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES(numbers_t),
+              numbers_member->tmpl->type);
+    ASSERT_EQ(sizeof(numbers_t), numbers_member->tmpl->size);
     ASSERT_NEQ(NULL, numbers_ptr);
     ASSERT_EQ(sample.numbers, *numbers_ptr);
 
@@ -572,15 +573,15 @@ check_extended_type_metadata(void)
     words_ptr = reflectc_get_member(wrapper, words_pos);
     ASSERT_NEQ(NULL, words_member);
     ASSERT_NEQ(NULL, words_ptr);
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__words_t,
-              words_member->type);
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES(words_t),
+              words_member->tmpl->type);
 
     numbers_member = &wrapper->members.array[numbers_pos];
     numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
     ASSERT_NEQ(NULL, numbers_member);
     ASSERT_NEQ(NULL, numbers_ptr);
-    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__numbers_t,
-              numbers_member->type);
+    ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES(numbers_t),
+              numbers_member->tmpl->type);
 
     reflectc_cleanup(registry, wrapper);
     reflectc_dispose(registry);

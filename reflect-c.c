@@ -111,10 +111,10 @@ REFLECTC_NS(_length)(const struct REFLECTC_NS(_wrap) * member)
         (struct REFLECTC_NS(_wrap_mut) *)member;
     size_t length = 1;
 
-    if (!member || !member->ptr_value) return 0;
+    if (!member || !member->ptr_value || !member->tmpl) return 0;
 
-    if (member->dimensions.length) {
-        const char *ptr = member->dimensions.buf;
+    if (member->tmpl->dimensions.length) {
+        const char *ptr = member->tmpl->dimensions.buf;
         while ((ptr = strchr(ptr, '[')) != NULL) {
             if (strchr(++ptr, ']') == NULL) return 0;
             length *= (size_t)strtoul(ptr, NULL, 10);
@@ -135,7 +135,9 @@ REFLECTC_NS(_get_pos)(const struct REFLECTC_NS(_wrap) * root,
     for (m = &root->members.array[0];
          m != &root->members.array[root->members.length]; ++m)
     {
-        if (m->name.length == length && !memcmp(m->name.buf, name, length)) {
+        if (m->tmpl && m->tmpl->name.length == length
+            && !memcmp(m->tmpl->name.buf, name, length))
+        {
             return (size_t)(m - root->members.array);
         }
     }
@@ -146,17 +148,19 @@ unsigned
 REFLECTC_NS(_get_pointer_depth)(const struct REFLECTC_NS(_wrap) * member)
 {
     unsigned depth = 1;
-    if (!member || !member->ptr_value) {
+    if (!member || !member->ptr_value || !member->tmpl) {
         return 0;
     }
-    if (member->decorator.length) {
-        const char *ptr = member->decorator.buf;
+    if (member->tmpl->decorator.length) {
+        const char *ptr = member->tmpl->decorator.buf;
         while ((ptr = strchr(ptr++, '*'))) {
             ++depth;
             ++ptr;
         }
     }
-    if (member->dimensions.length && strchr(member->dimensions.buf, '[')) {
+    if (member->tmpl->dimensions.length
+        && strchr(member->tmpl->dimensions.buf, '['))
+    {
         ++depth;
     }
     return depth;
@@ -168,14 +172,14 @@ _reflectc_pointer_levels(const struct REFLECTC_NS(_wrap) * member)
     unsigned levels = 0;
     const char *ptr;
 
-    if (!member) {
+    if (!member || !member->tmpl) {
         return 0;
     }
-    if (!member->decorator.length || !member->decorator.buf) {
+    if (!member->tmpl->decorator.length || !member->tmpl->decorator.buf) {
         return 0;
     }
 
-    ptr = member->decorator.buf;
+    ptr = member->tmpl->decorator.buf;
     while ((ptr = strchr(ptr, '*')) != NULL) {
         ++levels;
         ++ptr;
@@ -190,11 +194,12 @@ REFLECTC_NS(_deref)(const struct REFLECTC_NS(_wrap) * member)
     int has_dimensions;
     unsigned pointer_levels;
 
-    if (!member || !member->ptr_value) {
+    if (!member || !member->ptr_value || !member->tmpl) {
         return NULL;
     }
-    has_dimensions = member->dimensions.length && member->dimensions.buf
-                     && strchr(member->dimensions.buf, '[');
+    has_dimensions = member->tmpl->dimensions.length
+                     && member->tmpl->dimensions.buf
+                     && strchr(member->tmpl->dimensions.buf, '[');
     pointer_levels = _reflectc_pointer_levels(member);
 
     if (has_dimensions) {
@@ -245,7 +250,7 @@ REFLECTC_NS(_expand)(struct REFLECTC_PREFIX *registry,
     struct REFLECTC_NS(_wrap_mut) * mut;
     void *child;
 
-    if (!member || !member->from_cb) {
+    if (!member || !member->tmpl || !member->tmpl->from_cb) {
         return 0;
     }
     if (member->members.length) {
@@ -257,7 +262,7 @@ REFLECTC_NS(_expand)(struct REFLECTC_PREFIX *registry,
         return 0;
     }
     mut = (struct REFLECTC_NS(_wrap_mut) *)member;
-    mut->from_cb(registry, child, (struct REFLECTC_NS(_wrap) *)mut);
+    member->tmpl->from_cb(registry, child, (struct REFLECTC_NS(_wrap) *)mut);
     return member->members.length != 0;
 }
 
@@ -266,13 +271,19 @@ REFLECTC_NS(_memcpy)(const struct REFLECTC_NS(_wrap) * dest,
                      const void *src,
                      const size_t size)
 {
-    if (!dest || !src || size > dest->size) {
+    void *target;
+
+    if (!dest || !dest->tmpl || !src || size > dest->tmpl->size) {
         return NULL;
     }
     if (!dest->ptr_value) {
         return NULL;
     }
-    return memcpy((void *)REFLECTC_NS(_deref)(dest), src, size);
+    target = (void *)REFLECTC_NS(_deref)(dest);
+    if (!target) {
+        return NULL;
+    }
+    return memcpy(target, src, size);
 }
 
 const void *
@@ -321,15 +332,16 @@ REFLECTC_NS(_string)(const struct REFLECTC_NS(_wrap) * dest,
     int has_dimensions;
     char *target;
 
-    if (!dest || !src) {
+    if (!dest || !dest->tmpl || !src) {
         return NULL;
     }
 
     depth = REFLECTC_NS(_get_pointer_depth)(dest);
-    has_dimensions = dest->dimensions.length && dest->dimensions.buf
-                     && strchr(dest->dimensions.buf, '[');
+    has_dimensions = dest->tmpl->dimensions.length
+                     && dest->tmpl->dimensions.buf
+                     && strchr(dest->tmpl->dimensions.buf, '[');
 
-    if (dest->type != REFLECTC_NS_UPPER(_TYPES__char) && depth < 2) {
+    if (dest->tmpl->type != REFLECTC_NS_UPPER(_TYPES__char) && depth < 2) {
         return NULL;
     }
     if (!dest->ptr_value) {
@@ -528,20 +540,20 @@ REFLECTC_NS(_is_pointer_type)(const struct REFLECTC_NS(_wrap) * member)
 {
     size_t i;
 
-    if (!member) {
+    if (!member || !member->tmpl) {
         return 0;
     }
 
-    if (member->decorator.buf && member->decorator.length) {
-        for (i = 0; i < member->decorator.length; ++i) {
-            if (member->decorator.buf[i] == '*') {
+    if (member->tmpl->decorator.buf && member->tmpl->decorator.length) {
+        for (i = 0; i < member->tmpl->decorator.length; ++i) {
+            if (member->tmpl->decorator.buf[i] == '*') {
                 return 1;
             }
         }
     }
 
-    if (member->dimensions.buf && member->dimensions.length
-        && strchr(member->dimensions.buf, '['))
+    if (member->tmpl->dimensions.buf && member->tmpl->dimensions.length
+        && strchr(member->tmpl->dimensions.buf, '['))
     {
         return 1;
     }

@@ -20,24 +20,25 @@
 
 /* Forward declarations */
 struct REFLECTC_PREFIX;
+struct REFLECTC_NS(_template);
 struct REFLECTC_NS(_wrap);
 struct REFLECTC_NS(_wrap_mut);
 
-#define REFLECTC_TYPE(_sym) REFLECTC_NS_UPPER(_TYPES__##_sym)
+#define REFLECTC_TYPES(_sym) REFLECTC_NS_UPPER(_TYPES__##_sym)
 
 enum REFLECTC_NS(_types) {
-    REFLECTC_TYPE(void),
-    REFLECTC_TYPE(bool),
-    REFLECTC_TYPE(char),
-    REFLECTC_TYPE(short),
-    REFLECTC_TYPE(int),
-    REFLECTC_TYPE(long),
-    REFLECTC_TYPE(float),
-    REFLECTC_TYPE(double),
-    REFLECTC_TYPE(struct),
-    REFLECTC_TYPE(union),
-    REFLECTC_TYPE(enum),
-    REFLECTC_TYPE(EXTEND)
+    REFLECTC_TYPES(void),
+    REFLECTC_TYPES(bool),
+    REFLECTC_TYPES(char),
+    REFLECTC_TYPES(short),
+    REFLECTC_TYPES(int),
+    REFLECTC_TYPES(long),
+    REFLECTC_TYPES(float),
+    REFLECTC_TYPES(double),
+    REFLECTC_TYPES(struct),
+    REFLECTC_TYPES(union),
+    REFLECTC_TYPES(enum),
+    REFLECTC_TYPES(EXTEND)
 };
 
 typedef struct REFLECTC_NS(_wrap)
@@ -45,34 +46,44 @@ typedef struct REFLECTC_NS(_wrap)
                                void *self,
                                struct REFLECTC_NS(_wrap) * root);
 
+struct REFLECTC_NS(_template) {
+    const size_t size;
+    const struct {
+        const char *const buf;
+        const size_t length;
+    } qualifier, decorator, name, dimensions;
+    const enum REFLECTC_NS(_types) type;
+    const unsigned long attrs;
+    const struct {
+        const size_t length;
+        const struct REFLECTC_NS(_template) * array;
+    } members;
+    const REFLECTC_NS(_from_cb) from_cb;
+};
+
 #define _REFLECTC_PICKER_const     struct REFLECTC_NS(_wrap)
 #define _REFLECTC_PICKER___BLANK__ struct REFLECTC_NS(_wrap_mut)
 
-#define REFLECTC_ATTRIBUTES(_qualifier)                                       \
-    const size_t size;                                                        \
-    const struct {                                                            \
-        const char *const buf;                                                \
-        const size_t length;                                                  \
-    } qualifier, decorator, name, dimensions;                                 \
-    const enum REFLECTC_NS(_types) type;                                      \
-    _qualifier unsigned long attrs;                                           \
+#define REFLECTC_INSTANCE_FIELDS(_qualifier)                                  \
     _qualifier size_t length;                                                 \
     _qualifier void *_qualifier ptr_value;                                    \
     _qualifier struct {                                                       \
         _qualifier size_t length;                                             \
         _qualifier _REFLECTC_PICKER_##_qualifier *_qualifier array;           \
-    } members;                                                                \
-    const REFLECTC_NS(_from_cb) from_cb
+    } members
 
 struct REFLECTC_NS(_wrap) {
-    REFLECTC_ATTRIBUTES(const);
+    const struct REFLECTC_NS(_template) * tmpl;
+    REFLECTC_INSTANCE_FIELDS(const);
 };
 
 #define __BLANK__
 struct REFLECTC_NS(_wrap_mut) {
-    REFLECTC_ATTRIBUTES(__BLANK__);
+    const struct REFLECTC_NS(_template) * tmpl;
+    REFLECTC_INSTANCE_FIELDS(__BLANK__);
 };
 #undef __BLANK__
+#undef REFLECTC_INSTANCE_FIELDS
 #undef _REFLECTC_PICKER_const
 #undef _REFLECTC_PICKER___BLANK__
 

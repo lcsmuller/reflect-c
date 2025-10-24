@@ -10,7 +10,7 @@ Immutable view of a type member. Key fields:
 
 - `size` - size in bytes of the *declared* type.
 - `qualifier`, `decorator`, `name`, `dimensions` - string slices describing the original declaration. Empty fields carry `length == 0`.
-- `type` - `enum reflectc_types` value identifying the category (`REFLECTC_TYPES__int`, `REFLECTC_TYPES__struct`, ...).
+- `type` - `enum reflectc_types` value identifying the category (`REFLECTC_TYPES(int)`, `REFLECTC_TYPES(struct)`, ...).
 - `length` - number of elements covered by this node. For scalars it is `1`; for arrays it is expanded on demand.
 - `ptr_value` - pointer to the underlying data (may be `NULL` for optional pointers).
 - `members` - nested reflection nodes when `type` is `struct` or `union`.
@@ -67,9 +67,9 @@ Need to describe custom scalars? Drop an enum alongside your typedefs:
 
 ```c
 enum reflectc_custom_types {
-    REFLECTC_TYPES__reflectc_words_t = REFLECTC_TYPES__EXTEND,
-    REFLECTC_TYPES__reflectc_numbers_t,
+    REFLECTC_TYPES(reflectc_words_t) = REFLECTC_TYPES(EXTEND),
+    REFLECTC_TYPES(reflectc_numbers_t),
 };
 ```
 
-Because enumerators live in the same namespace, generated metadata for those typedefs reports `type == REFLECTC_TYPES__reflectc_words_t` (or whichever alias you introduce), giving your runtime a stable tag for project-specific primitives while keeping the core generator untouched.
+Because enumerators live in the same namespace, generated metadata for those typedefs reports `type == REFLECTC_TYPES(reflectc_words_t)` (or whichever alias you introduce), giving your runtime a stable tag for project-specific primitives while keeping the core generator untouched.

@@ -227,8 +227,8 @@ reflectc_set_member(bar_ref, number_pos, &new_value, sizeof new_value);
 typedef size_t reflectc_words_t;
 typedef unsigned long reflectc_numbers_t;
 enum reflectc_custom_types {
-   REFLECTC_TYPES__reflectc_words_t = REFLECTC_TYPES__EXTEND,
-   REFLECTC_TYPES__reflectc_numbers_t,
+   REFLECTC_TYPES(reflectc_words_t) = REFLECTC_TYPES(EXTEND),
+   REFLECTC_TYPES(reflectc_numbers_t),
 };
 */
 #endif
@@ -249,7 +249,7 @@ struct reflectc *wrapper = reflectc_from_hooks(&sample, NULL);
 size_t words_pos = REFLECTC_LOOKUP(struct, hooks, words, wrapper);
 const struct reflectc *words = &wrapper->members.array[words_pos];
 
-if (words->type == (enum reflectc_types)REFLECTC_TYPES__reflectc_words_t) {
+if (words->type == REFLECTC_TYPES(reflectc_words_t)) {
    printf("words: %zu\n", *(reflectc_words_t *)reflectc_get_member(wrapper, words_pos));
 }
 
@@ -310,7 +310,7 @@ Commit the regenerated header if you want downstream builds to avoid running the
    This produces `app_reflect.c`, `app_reflect.h`, and `app_reflect.o` alongside the runtime library. For CMake, Meson, or others, wrap that command in a custom build step so it re-runs when recipes change.
 4. **Compile and link** - add the generated `.c` (or `.o`) plus `reflect-c.c` to your project, or simply link against the provided `libreflectc.a`. Ensure your compiler’s include path covers both `reflect-c.h` and the generated header.
 5. **Use the helpers at runtime** - include the headers, call `reflectc_from_<type>` to wrap your instances, and interact with fields via `REFLECTC_LOOKUP`, `reflectc_get_member`, or the other API functions described above. Free wrappers with `free` when done.
-6. **Optional polish** - commit generated files if you need deterministic builds without the generator present, or extend the emitted enum range by adding typedefs and enums mapped to `REFLECTC_TYPES__EXTEND` within your recipes.
+6. **Optional polish** - commit generated files if you need deterministic builds without the generator present, or extend the emitted enum range by adding typedefs and enums mapped to `REFLECTC_TYPES(EXTEND)` within your recipes.
 
 ## Project structure
 

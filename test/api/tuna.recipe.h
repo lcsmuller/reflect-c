@@ -19,8 +19,8 @@ PUBLIC(struct, tuna, 4, (
 #ifdef REFLECTC_POST_HOOKS
 /*#!
 enum {
-    REFLECTC_NS_UPPER(_TYPES__words_t) = REFLECTC_NS_UPPER(_TYPES__EXTEND),
-    REFLECTC_NS_UPPER(_TYPES__numbers_t)
+    REFLECTC_TYPES(words_t) = REFLECTC_TYPES(EXTEND),
+    REFLECTC_TYPES(numbers_t)
 };
 */
 #endif
