@@ -7,10 +7,108 @@
 #define SIZE_MAX ((size_t)-1)
 #endif
 
-size_t
-REFLECTC_NS(_length)(const struct REFLECTC_PREFIX *member)
+struct _reflectc_entry {
+    void *value;
+    struct REFLECTC_NS(_wrap) * wrapper;
+};
+
+struct REFLECTC_PREFIX {
+    struct _reflectc_entry *entries;
+    size_t length;
+    size_t capacity;
+};
+
+static size_t
+_reflectc_find_index(const struct REFLECTC_PREFIX *table, const void *value)
 {
-    struct REFLECTC_NS(_mut) *mut_member = (struct REFLECTC_NS(_mut) *)member;
+    size_t i;
+
+    if (!table || !value) {
+        return SIZE_MAX;
+    }
+
+    for (i = 0; i < table->length; ++i) {
+        if (table->entries[i].value == value) {
+            return i;
+        }
+    }
+
+    return SIZE_MAX;
+}
+
+struct REFLECTC_PREFIX *
+REFLECTC_NS(_init)(void)
+{
+    return calloc(1, sizeof(struct REFLECTC_PREFIX));
+}
+
+void
+REFLECTC_NS(_dispose)(struct REFLECTC_PREFIX *table)
+{
+    if (!table) return;
+    free(table->entries);
+    free(table);
+}
+
+struct REFLECTC_NS(_wrap)
+    * REFLECTC_NS(_find)(const struct REFLECTC_PREFIX *table,
+                         const void *value)
+{
+    const size_t idx = _reflectc_find_index(table, value);
+    return (idx == SIZE_MAX) ? NULL : table->entries[idx].wrapper;
+}
+
+int
+REFLECTC_NS(_put)(struct REFLECTC_PREFIX *table,
+                  void *value,
+                  struct REFLECTC_NS(_wrap) * wrapper)
+{
+    size_t idx;
+    struct _reflectc_entry *entries;
+    size_t capacity;
+
+    if (!table || !value || !wrapper) {
+        return 0;
+    }
+
+    if ((idx = _reflectc_find_index(table, value)) != SIZE_MAX) {
+        table->entries[idx].wrapper = wrapper;
+        return 1;
+    }
+    if (table->length == table->capacity) {
+        capacity = table->capacity ? table->capacity * 2u : 4u;
+        if (!(entries =
+                  realloc(table->entries, capacity * sizeof *table->entries)))
+        {
+            return 0;
+        }
+        table->entries = entries;
+        table->capacity = capacity;
+    }
+    table->entries[table->length].value = value;
+    table->entries[table->length++].wrapper = wrapper;
+    return 1;
+}
+
+void
+REFLECTC_NS(_erase)(struct REFLECTC_PREFIX *table, const void *value)
+{
+    const size_t idx = _reflectc_find_index(table, value);
+    if (idx == SIZE_MAX || !table->length) return;
+
+    table->entries[idx] = table->entries[--table->length];
+    if (table->length == 0) {
+        table->capacity = 0;
+        free(table->entries);
+        table->entries = NULL;
+    }
+}
+
+size_t
+REFLECTC_NS(_length)(const struct REFLECTC_NS(_wrap) * member)
+{
+    struct REFLECTC_NS(_wrap_mut) *mut_member =
+        (struct REFLECTC_NS(_wrap_mut) *)member;
     size_t length = 1;
 
     if (!member || !member->ptr_value) return 0;
@@ -29,11 +127,11 @@ REFLECTC_NS(_length)(const struct REFLECTC_PREFIX *member)
 }
 
 size_t
-REFLECTC_NS(_get_pos)(const struct REFLECTC_PREFIX *root,
+REFLECTC_NS(_get_pos)(const struct REFLECTC_NS(_wrap) * root,
                       const char *const name,
                       const size_t length)
 {
-    const struct REFLECTC_PREFIX *m;
+    const struct REFLECTC_NS(_wrap) * m;
     for (m = &root->members.array[0];
          m != &root->members.array[root->members.length]; ++m)
     {
@@ -45,7 +143,7 @@ REFLECTC_NS(_get_pos)(const struct REFLECTC_PREFIX *root,
 }
 
 unsigned
-REFLECTC_NS(_get_pointer_depth)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_get_pointer_depth)(const struct REFLECTC_NS(_wrap) * member)
 {
     unsigned depth = 1;
     if (!member || !member->ptr_value) {
@@ -65,7 +163,7 @@ REFLECTC_NS(_get_pointer_depth)(const struct REFLECTC_PREFIX *member)
 }
 
 static unsigned
-REFLECTC_NS(_pointer_levels)(const struct REFLECTC_PREFIX *member)
+_reflectc_pointer_levels(const struct REFLECTC_NS(_wrap) * member)
 {
     unsigned levels = 0;
     const char *ptr;
@@ -87,7 +185,7 @@ REFLECTC_NS(_pointer_levels)(const struct REFLECTC_PREFIX *member)
 }
 
 const void *
-REFLECTC_NS(_deref)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_deref)(const struct REFLECTC_NS(_wrap) * member)
 {
     int has_dimensions;
     unsigned pointer_levels;
@@ -97,7 +195,7 @@ REFLECTC_NS(_deref)(const struct REFLECTC_PREFIX *member)
     }
     has_dimensions = member->dimensions.length && member->dimensions.buf
                      && strchr(member->dimensions.buf, '[');
-    pointer_levels = REFLECTC_NS(_pointer_levels)(member);
+    pointer_levels = _reflectc_pointer_levels(member);
 
     if (has_dimensions) {
         /* Embedded arrays yield their storage address */
@@ -116,7 +214,7 @@ REFLECTC_NS(_deref)(const struct REFLECTC_PREFIX *member)
 }
 
 void *
-REFLECTC_NS(_resolve)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_resolve)(const struct REFLECTC_NS(_wrap) * member)
 {
     unsigned pointer_levels;
     const void *addr;
@@ -126,7 +224,7 @@ REFLECTC_NS(_resolve)(const struct REFLECTC_PREFIX *member)
         return NULL;
     }
 
-    pointer_levels = REFLECTC_NS(_pointer_levels)(member);
+    pointer_levels = _reflectc_pointer_levels(member);
     addr = member->ptr_value;
     value = (void *)addr;
 
@@ -141,9 +239,10 @@ REFLECTC_NS(_resolve)(const struct REFLECTC_PREFIX *member)
 }
 
 int
-REFLECTC_NS(_expand)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_expand)(struct REFLECTC_PREFIX *registry,
+                     const struct REFLECTC_NS(_wrap) * member)
 {
-    struct REFLECTC_NS(_mut) * mut;
+    struct REFLECTC_NS(_wrap_mut) * mut;
     void *child;
 
     if (!member || !member->from_cb) {
@@ -157,13 +256,13 @@ REFLECTC_NS(_expand)(const struct REFLECTC_PREFIX *member)
     if (!child) {
         return 0;
     }
-    mut = (struct REFLECTC_NS(_mut) *)member;
-    mut->from_cb(child, (struct REFLECTC_PREFIX *)mut);
+    mut = (struct REFLECTC_NS(_wrap_mut) *)member;
+    mut->from_cb(registry, child, (struct REFLECTC_NS(_wrap) *)mut);
     return member->members.length != 0;
 }
 
 const void *
-REFLECTC_NS(_memcpy)(const struct REFLECTC_PREFIX *dest,
+REFLECTC_NS(_memcpy)(const struct REFLECTC_NS(_wrap) * dest,
                      const void *src,
                      const size_t size)
 {
@@ -177,13 +276,13 @@ REFLECTC_NS(_memcpy)(const struct REFLECTC_PREFIX *dest,
 }
 
 const void *
-REFLECTC_NS(_get)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_get)(const struct REFLECTC_NS(_wrap) * member)
 {
     return REFLECTC_NS(_deref)(member);
 }
 
 const void *
-REFLECTC_NS(_set)(const struct REFLECTC_PREFIX *member,
+REFLECTC_NS(_set)(const struct REFLECTC_NS(_wrap) * member,
                   const void *value,
                   size_t size)
 {
@@ -191,7 +290,7 @@ REFLECTC_NS(_set)(const struct REFLECTC_PREFIX *member,
 }
 
 const void *
-REFLECTC_NS(_get_member)(const struct REFLECTC_PREFIX *root, size_t pos)
+REFLECTC_NS(_get_member)(const struct REFLECTC_NS(_wrap) * root, size_t pos)
 {
     if (!root || pos >= root->members.length) {
         return NULL;
@@ -200,7 +299,7 @@ REFLECTC_NS(_get_member)(const struct REFLECTC_PREFIX *root, size_t pos)
 }
 
 const void *
-REFLECTC_NS(_set_member)(const struct REFLECTC_PREFIX *root,
+REFLECTC_NS(_set_member)(const struct REFLECTC_NS(_wrap) * root,
                          size_t pos,
                          const void *value,
                          size_t size)
@@ -212,11 +311,12 @@ REFLECTC_NS(_set_member)(const struct REFLECTC_PREFIX *root,
 }
 
 const char *
-REFLECTC_NS(_string)(const struct REFLECTC_PREFIX *dest,
+REFLECTC_NS(_string)(const struct REFLECTC_NS(_wrap) * dest,
                      const char src[],
                      const size_t size)
 {
-    struct REFLECTC_NS(_mut) *mut_dest = (struct REFLECTC_NS(_mut) *)dest;
+    struct REFLECTC_NS(_wrap_mut) *mut_dest =
+        (struct REFLECTC_NS(_wrap_mut) *)dest;
     unsigned depth;
     int has_dimensions;
     char *target;
@@ -272,9 +372,11 @@ REFLECTC_NS(_string)(const struct REFLECTC_PREFIX *dest,
 }
 
 void
-REFLECTC_NS(_array)(const struct REFLECTC_PREFIX *root, const size_t length)
+REFLECTC_NS(_array)(const struct REFLECTC_NS(_wrap) * root,
+                    const size_t length)
 {
-    struct REFLECTC_NS(_mut) *mut_root = (struct REFLECTC_NS(_mut) *)root;
+    struct REFLECTC_NS(_wrap_mut) *mut_root =
+        (struct REFLECTC_NS(_wrap_mut) *)root;
     if (!root) return;
 
     if (length > REFLECTC_NS(_length)(root)) {
@@ -284,7 +386,7 @@ REFLECTC_NS(_array)(const struct REFLECTC_PREFIX *root, const size_t length)
             return;
         }
         mut_root = tmp;
-        for (i = REFLECTC_NS(_length)((struct REFLECTC_PREFIX *)mut_root);
+        for (i = REFLECTC_NS(_length)((struct REFLECTC_NS(_wrap) *)mut_root);
              i < length; ++i)
         {
             memcpy(mut_root + i, &mut_root[0], sizeof *mut_root);
@@ -295,12 +397,11 @@ REFLECTC_NS(_array)(const struct REFLECTC_PREFIX *root, const size_t length)
     mut_root->length = length;
 }
 
-static void REFLECTC_NS(_cleanup_member_block)(struct REFLECTC_NS(_mut)
-                                                   * members,
-                                               size_t count);
+static void _reflectc_cleanup_member_block(struct REFLECTC_NS(_wrap_mut)
+                                               * members,
+                                           size_t count);
 
-static void
-REFLECTC_NS(_cleanup_node)(struct REFLECTC_NS(_mut) * node)
+static void _reflectc_cleanup_node(struct REFLECTC_NS(_wrap_mut) * node)
 {
     size_t span;
     size_t i;
@@ -311,14 +412,14 @@ REFLECTC_NS(_cleanup_node)(struct REFLECTC_NS(_mut) * node)
 
     span = node->length ? node->length : 1;
     for (i = 0; i < span; ++i) {
-        struct REFLECTC_NS(_mut) *current = node + i;
+        struct REFLECTC_NS(_wrap_mut) *current = node + i;
 
         if (!current->members.array || !current->members.length) {
             continue;
         }
 
-        REFLECTC_NS(_cleanup_member_block)(current->members.array,
-                                           current->members.length);
+        _reflectc_cleanup_member_block(current->members.array,
+                                       current->members.length);
 
         if (i == 0) {
             free(current->members.array);
@@ -330,39 +431,45 @@ REFLECTC_NS(_cleanup_node)(struct REFLECTC_NS(_mut) * node)
 }
 
 static void
-REFLECTC_NS(_cleanup_member_block)(struct REFLECTC_NS(_mut) * members,
-                                   size_t count)
+_reflectc_cleanup_member_block(struct REFLECTC_NS(_wrap_mut) * members,
+                               size_t count)
 {
     size_t i;
 
     if (!members) return;
 
     for (i = 0; i < count; ++i) {
-        REFLECTC_NS(_cleanup_node)(members + i);
+        _reflectc_cleanup_node(members + i);
     }
 }
 
 void
-REFLECTC_NS(_cleanup)(struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_cleanup)(struct REFLECTC_PREFIX *registry,
+                      struct REFLECTC_NS(_wrap) * member)
 {
     if (!member) return;
 
-    REFLECTC_NS(_cleanup_node)((struct REFLECTC_NS(_mut) *)member);
+    if (registry && member->ptr_value) {
+        REFLECTC_NS(_erase)(registry, member->ptr_value);
+    }
+    _reflectc_cleanup_node((struct REFLECTC_NS(_wrap_mut) *)member);
     free(member);
 }
 
 void
-REFLECTC_NS(_cleanup_members)(struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_cleanup_members)(struct REFLECTC_PREFIX *registry,
+                              struct REFLECTC_NS(_wrap) * member)
 {
     if (!member) return;
 
-    REFLECTC_NS(_cleanup_node)((struct REFLECTC_NS(_mut) *)member);
+    (void)registry;
+    _reflectc_cleanup_node((struct REFLECTC_NS(_wrap_mut) *)member);
 }
 
 static int
-REFLECTC_NS(_for_each_impl)(const struct REFLECTC_PREFIX *member,
-                            REFLECTC_NS(_visit_cb) cb,
-                            void *ctx)
+_reflectc_for_each_impl(const struct REFLECTC_NS(_wrap) * member,
+                        REFLECTC_NS(_visit_cb) cb,
+                        void *ctx)
 {
     size_t span;
     size_t i;
@@ -373,13 +480,12 @@ REFLECTC_NS(_for_each_impl)(const struct REFLECTC_PREFIX *member,
 
     span = member->length ? member->length : 1;
     for (i = 0; i < span; ++i) {
-        const struct REFLECTC_PREFIX *current = member + i;
+        const struct REFLECTC_NS(_wrap) *current = member + i;
         if (!cb(current, ctx)) {
             return 0;
         }
         if (current->members.array && current->members.length) {
-            if (!REFLECTC_NS(_for_each_impl)(current->members.array, cb, ctx))
-            {
+            if (!_reflectc_for_each_impl(current->members.array, cb, ctx)) {
                 return 0;
             }
         }
@@ -388,20 +494,17 @@ REFLECTC_NS(_for_each_impl)(const struct REFLECTC_PREFIX *member,
 }
 
 int
-REFLECTC_NS(_for_each)(const struct REFLECTC_PREFIX *root,
+REFLECTC_NS(_for_each)(const struct REFLECTC_NS(_wrap) * root,
                        REFLECTC_NS(_visit_cb) cb,
                        void *ctx)
 {
-    if (!root || !cb) {
-        return 0;
-    }
-    return REFLECTC_NS(_for_each_impl)(root, cb, ctx);
+    return (!root || !cb) ? 0 : _reflectc_for_each_impl(root, cb, ctx);
 }
 
-const struct REFLECTC_PREFIX *
-REFLECTC_NS(_require_member)(const struct REFLECTC_PREFIX *root,
-                             const char *name,
-                             size_t len)
+const struct REFLECTC_NS(_wrap)
+    * REFLECTC_NS(_require_member)(const struct REFLECTC_NS(_wrap) * root,
+                                   const char *name,
+                                   size_t len)
 {
     size_t pos;
 
@@ -421,7 +524,7 @@ REFLECTC_NS(_require_member)(const struct REFLECTC_PREFIX *root,
 }
 
 int
-REFLECTC_NS(_is_pointer_type)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_is_pointer_type)(const struct REFLECTC_NS(_wrap) * member)
 {
     size_t i;
 
@@ -447,7 +550,7 @@ REFLECTC_NS(_is_pointer_type)(const struct REFLECTC_PREFIX *member)
 }
 
 int
-REFLECTC_NS(_is_null)(const struct REFLECTC_PREFIX *member)
+REFLECTC_NS(_is_null)(const struct REFLECTC_NS(_wrap) * member)
 {
     if (!member) {
         return 1;
@@ -462,7 +565,8 @@ REFLECTC_NS(_is_null)(const struct REFLECTC_PREFIX *member)
 }
 
 static int
-REFLECTC_NS(_expand_all_impl)(struct REFLECTC_PREFIX *member)
+_reflectc_expand_all_impl(struct REFLECTC_PREFIX *registry,
+                          struct REFLECTC_NS(_wrap) * member)
 {
     size_t span;
     size_t i;
@@ -472,21 +576,21 @@ REFLECTC_NS(_expand_all_impl)(struct REFLECTC_PREFIX *member)
 
     span = member->length ? member->length : 1;
     for (i = 0; i < span; ++i) {
-        struct REFLECTC_PREFIX *current = member + i;
-        if (REFLECTC_NS(_expand)(current)) {
+        struct REFLECTC_NS(_wrap) *current = member + i;
+        if (REFLECTC_NS(_expand)(registry, current)) {
             ++expanded;
         }
         if (current->members.array && current->members.length) {
-            expanded += REFLECTC_NS(_expand_all_impl)(
-                (struct REFLECTC_PREFIX *)current->members.array);
+            expanded += _reflectc_expand_all_impl(
+                registry, (struct REFLECTC_NS(_wrap) *)current->members.array);
         }
     }
     return expanded;
 }
 
 int
-REFLECTC_NS(_expand_all)(struct REFLECTC_PREFIX *root)
+REFLECTC_NS(_expand_all)(struct REFLECTC_PREFIX *registry,
+                         struct REFLECTC_NS(_wrap) * root)
 {
-    if (!root) return 0;
-    return REFLECTC_NS(_expand_all_impl)((struct REFLECTC_PREFIX *)root);
+    return (!root) ? 0 : _reflectc_expand_all_impl(registry, root);
 }

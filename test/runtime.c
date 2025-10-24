@@ -9,8 +9,6 @@
 #include "jsmn-find/test/jsmn_1.1.0.h"
 #include "jsmn-find/jsmn-find.h"
 
-#include "reflect-c.h"
-
 #include "reflect-c_GENERATED.h"
 
 #ifndef SIZE_MAX
@@ -30,14 +28,14 @@
 static int test_nullable_violation;
 
 static int
-is_nullable(const struct reflectc *member)
+is_nullable(const struct reflectc_wrap *member)
 {
     return member && (member->attrs & TEST_ATTR_NULLABLE);
 }
 
 static void
 json_stringify(struct jsonb *jb,
-               const struct reflectc *member,
+               const struct reflectc_wrap *member,
                char buf[],
                size_t bufsize)
 {
@@ -61,9 +59,6 @@ json_stringify(struct jsonb *jb,
     case REFLECTC_TYPES__bool:
         jsonb_bool(jb, buf, bufsize, *(const bool *)value);
         break;
-    case REFLECTC_TYPES__float:
-        jsonb_number(jb, buf, bufsize, *(const float *)value);
-        break;
     case REFLECTC_TYPES__enum:
         jsonb_number(jb, buf, bufsize, (double)*(const int *)value);
         break;
@@ -79,7 +74,7 @@ json_stringify(struct jsonb *jb,
         else {
             jsonb_object(jb, buf, bufsize);
             for (size_t i = 0; i < member->members.length; ++i) {
-                const struct reflectc *f = &member->members.array[i];
+                const struct reflectc_wrap *f = &member->members.array[i];
                 jsonb_key(jb, buf, bufsize, f->name.buf, f->name.length);
                 json_stringify(jb, f, buf, bufsize);
             }
@@ -92,7 +87,7 @@ json_stringify(struct jsonb *jb,
 }
 
 static void
-json_parse_assign_null(const struct reflectc *member)
+json_parse_assign_null(const struct reflectc_wrap *member)
 {
     const void *value = NULL;
     unsigned depth = reflectc_get_pointer_depth(member);
@@ -112,10 +107,11 @@ json_parse_assign_null(const struct reflectc *member)
 }
 
 static void
-json_parse_impl(const jsmnf_pair *p,
+json_parse_impl(struct reflectc *registry,
+                const jsmnf_pair *p,
                 const char *json,
                 size_t length,
-                const struct reflectc *member)
+                const struct reflectc_wrap *member)
 {
     if (!p || !member) {
         return;
@@ -199,7 +195,7 @@ json_parse_impl(const jsmnf_pair *p,
                 member->type);
             return;
         }
-        reflectc_expand(member);
+        reflectc_expand(registry, member);
         for (size_t i = 0; i < p->capacity; ++i) {
             const size_t pos = reflectc_get_pos(member, p->buckets[i].key.buf,
                                                 p->buckets[i].key.length);
@@ -209,7 +205,7 @@ json_parse_impl(const jsmnf_pair *p,
             if (pos != SIZE_MAX) {
                 const jsmnf_pair *p_m = jsmnf_find(p, p->buckets[i].key.buf,
                                                    p->buckets[i].key.length);
-                const struct reflectc *m = member->members.array + pos;
+                const struct reflectc_wrap *m = member->members.array + pos;
                 if (!p_m) {
                     json_parse_assign_null(m);
                     continue;
@@ -217,14 +213,14 @@ json_parse_impl(const jsmnf_pair *p,
                 TEST_DEBUG_PRINT("2. Parsing field: %.*s\n",
                                  (int)p->buckets[i].key.length,
                                  p->buckets[i].key.buf);
-                json_parse_impl(p_m, json, length, m);
+                json_parse_impl(registry, p_m, json, length, m);
             }
         }
         break;
     case JSMN_ARRAY:
         reflectc_array(member, p->length);
         for (size_t i = 0; i < p->length; ++i) {
-            json_parse_impl(&p->fields[i], json, length, &member[i]);
+            json_parse_impl(registry, &p->fields[i], json, length, &member[i]);
         }
         break;
     default:
@@ -233,20 +229,23 @@ json_parse_impl(const jsmnf_pair *p,
 }
 
 static void
-json_parse(const char *json, size_t len, struct reflectc *root)
+json_parse(struct reflectc *registry,
+           const char *json,
+           size_t len,
+           struct reflectc_wrap *root)
 {
     jsmnf_loader l;
     jsmnf_table *pairs = NULL;
     size_t pairs_len = 0;
     jsmnf_init(&l);
     if (jsmnf_load_auto(&l, json, len, &pairs, &pairs_len) > 0) {
-        json_parse_impl(l.root, json, len, root);
+        json_parse_impl(registry, l.root, json, len, root);
         free(pairs);
     }
 }
 
 static int
-count_members(const struct reflectc *member, void *ctx)
+count_members(const struct reflectc_wrap *member, void *ctx)
 {
     size_t *count = ctx;
     (void)member;
@@ -278,9 +277,11 @@ check_json_serializer(void)
     // Generate the JSON string
     struct bar a = { true, 42, "hello world" }, *aa = &a, **aaa = &aa;
     struct baz baz = { &a, &a, &aaa, NULL, LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
-    const struct reflectc *d_member = &wrapped_baz->members.array[d_pos];
+    const struct reflectc_wrap *d_member = &wrapped_baz->members.array[d_pos];
     ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
     struct jsonb jb;
     jsonb_init(&jb);
@@ -322,7 +323,8 @@ check_json_serializer(void)
                   got_json + got_pair->v->start,
                   got_pair->v->end - got_pair->v->start);
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -340,15 +342,16 @@ check_json_parser(void)
     char d[32] = { 0 };
 
     struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
-    const struct reflectc *d_member = &wrapped_baz->members.array[d_pos];
+    const struct reflectc_wrap *d_member = &wrapped_baz->members.array[d_pos];
     ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
 
     test_nullable_violation = 0;
-    json_parse(json, sizeof(json) - 1, wrapped_baz);
+    json_parse(registry, json, sizeof(json) - 1, wrapped_baz);
     ASSERT_EQ(0, test_nullable_violation);
-
     ASSERT_EQ(true, a.boolean);
     ASSERT_EQ(42, a.number);
     ASSERT_STR_EQ("hello world", a.string);
@@ -364,11 +367,12 @@ check_json_parser(void)
     ASSERT_STR_EQ("parsed text", d);
     ASSERT_EQ(LEVELS_THREE, baz.e);
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
 
     free(a.string);
     free(b.string);
     free(c.string);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -382,7 +386,9 @@ check_json_serializer_rejects_nonnullable_null(void)
     struct bar ***member_ptr_ptr_ptr = &member_ptr_ptr;
     struct baz baz = { NULL, &member, member_ptr_ptr_ptr, "nullable",
                        LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     char got_json[256] = { 0 };
     struct jsonb jb;
 
@@ -393,7 +399,8 @@ check_json_serializer_rejects_nonnullable_null(void)
     json_stringify(&jb, wrapped_baz, got_json, sizeof(got_json));
     ASSERT_EQ(1, test_nullable_violation);
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -409,27 +416,31 @@ check_json_parser_nullable_null(void)
     struct bar a = { 0 }, b = { 0 }, c = { 0 }, *cc = &c, **ccc = &cc;
     char d[16] = "initial";
     struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
 
     ASSERT_NEQ(NULL, wrapped_baz);
     size_t d_pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
-    const struct reflectc *d_member = &wrapped_baz->members.array[d_pos];
+    const struct reflectc_wrap *d_member = &wrapped_baz->members.array[d_pos];
     ASSERT_EQ(TEST_ATTR_NULLABLE, d_member->attrs);
     unsigned depth = reflectc_get_pointer_depth(d_member);
     ASSERT_EQ(2u, depth);
 
     test_nullable_violation = 0;
-    json_parse(json, sizeof(json) - 1, wrapped_baz);
+    json_parse(registry, json, sizeof(json) - 1, wrapped_baz);
     ASSERT_EQ(0, test_nullable_violation);
     ASSERT_NEQ(0, reflectc_is_null(d_member));
     ASSERT_EQ(NULL, baz.d);
     ASSERT_EQ(LEVELS_TWO, baz.e);
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
 
     free(a.string);
     free(b.string);
     free(c.string);
+
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -446,20 +457,24 @@ check_json_parser_rejects_nonnullable_null(void)
                **ccc = &cc;
     char d[16] = "keep";
     struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
 
     ASSERT_NEQ(NULL, wrapped_baz);
 
     test_nullable_violation = 0;
-    json_parse(json, sizeof(json) - 1, wrapped_baz);
+    json_parse(registry, json, sizeof(json) - 1, wrapped_baz);
     ASSERT_EQ(1, test_nullable_violation);
     ASSERT_EQ(&a, baz.a);
     ASSERT_STR_EQ("keep", d);
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
 
     free(b.string);
     free(c.string);
+
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -471,15 +486,17 @@ check_resolve_and_expand(void)
     struct bar *first = &value;
     struct bar **second = &first;
     struct baz baz = { &value, &value, &second, "hydrate", LEVELS_TWO };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
-    const struct reflectc *c_member = &wrapped_baz->members.array[c_pos];
+    const struct reflectc_wrap *c_member = &wrapped_baz->members.array[c_pos];
     size_t before = c_member->members.length;
     size_t boolean_pos;
     size_t number_pos;
 
     ASSERT_EQ(&value, reflectc_resolve(c_member));
-    ASSERT_EQ(1, reflectc_expand(c_member));
+    ASSERT_EQ(1, reflectc_expand(registry, c_member));
     if (before == 0) {
         ASSERT_NEQ(0, c_member->members.length);
     }
@@ -492,7 +509,8 @@ check_resolve_and_expand(void)
     ASSERT_NEQ(SIZE_MAX, number_pos);
     ASSERT_EQ(value.number, *(int *)reflectc_get_member(c_member, number_pos));
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -506,14 +524,17 @@ check_resolve_null_chain(void)
     struct bar **null_chain = &null_leaf;
     struct bar ***null_root = &null_chain;
     struct baz baz = { &a, &b, null_root, NULL, LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
-    const struct reflectc *c_member = &wrapped_baz->members.array[c_pos];
+    const struct reflectc_wrap *c_member = &wrapped_baz->members.array[c_pos];
 
     ASSERT_EQ(NULL, reflectc_resolve(c_member));
-    ASSERT_EQ(0, reflectc_expand(c_member));
+    ASSERT_EQ(0, reflectc_expand(registry, c_member));
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -522,12 +543,15 @@ TEST
 check_extended_type_metadata(void)
 {
     struct tuna sample = { 21, true, (size_t)512, (unsigned long)7 };
-    struct reflectc *wrapper = reflectc_from_tuna(&sample, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapper =
+        reflectc_from_tuna(registry, &sample, NULL);
     size_t words_pos = REFLECTC_LOOKUP(struct, tuna, words, wrapper);
-    const struct reflectc *words_member = &wrapper->members.array[words_pos];
+    const struct reflectc_wrap *words_member =
+        &wrapper->members.array[words_pos];
     const words_t *words_ptr = reflectc_get_member(wrapper, words_pos);
     size_t numbers_pos = REFLECTC_LOOKUP(struct, tuna, numbers, wrapper);
-    const struct reflectc *numbers_member =
+    const struct reflectc_wrap *numbers_member =
         &wrapper->members.array[numbers_pos];
     const numbers_t *numbers_ptr = reflectc_get_member(wrapper, numbers_pos);
 
@@ -543,7 +567,7 @@ check_extended_type_metadata(void)
     ASSERT_NEQ(NULL, numbers_ptr);
     ASSERT_EQ(sample.numbers, *numbers_ptr);
 
-    reflectc_from_tuna(NULL, wrapper);
+    reflectc_from_tuna(registry, NULL, wrapper);
     words_member = &wrapper->members.array[words_pos];
     words_ptr = reflectc_get_member(wrapper, words_pos);
     ASSERT_NEQ(NULL, words_member);
@@ -558,7 +582,8 @@ check_extended_type_metadata(void)
     ASSERT_EQ((enum reflectc_types)REFLECTC_TYPES__numbers_t,
               numbers_member->type);
 
-    reflectc_cleanup(wrapper);
+    reflectc_cleanup(registry, wrapper);
+    reflectc_dispose(registry);
     PASS();
 }
 
@@ -569,7 +594,9 @@ check_loop_through(void)
     char d[] = "hello world";
 
     struct baz baz = { &a, &b, &ccc, d, LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t pos = REFLECTC_LOOKUP(struct, baz, a, wrapped_baz);
     ASSERT_EQ(&a, reflectc_get_member(wrapped_baz, pos));
     pos = REFLECTC_LOOKUP(struct, baz, b, wrapped_baz);
@@ -579,7 +606,8 @@ check_loop_through(void)
     pos = REFLECTC_LOOKUP(struct, baz, d, wrapped_baz);
     ASSERT_MEM_EQ(&d, reflectc_get_member(wrapped_baz, pos), sizeof(d));
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -593,20 +621,24 @@ check_cleanup(void)
     struct bar **app = &ap;
     struct bar ***appp = &app;
     struct baz baz = { &a, &b, appp, "cleanup", LEVELS_ONE };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t a_pos = REFLECTC_LOOKUP(struct, baz, a, wrapped_baz);
-    const struct reflectc *a_member = &wrapped_baz->members.array[a_pos];
+    const struct reflectc_wrap *a_member = &wrapped_baz->members.array[a_pos];
 
     ASSERT_NEQ(NULL, wrapped_baz);
     ASSERT_NEQ(NULL, wrapped_baz->members.array);
     ASSERT_NEQ(NULL, a_member->members.array);
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
 
     ASSERT_NEQ(NULL, baz.a);
     ASSERT_EQ(true, baz.a->boolean);
     ASSERT_EQ(7, baz.a->number);
     ASSERT_STR_EQ("hydrate", baz.a->string);
+
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -618,7 +650,9 @@ check_array(void)
         int number;
     } native = { 42 };
     struct foo foo = { true, { 42, 43, 44, 45 }, "hello world", &native };
-    struct reflectc *wrapped_foo = reflectc_from_foo(&foo, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_foo =
+        reflectc_from_foo(registry, &foo, NULL);
     size_t pos = REFLECTC_LOOKUP(struct, foo, boolean, wrapped_foo);
     ASSERT_EQ(foo.boolean, *(bool *)reflectc_get_member(wrapped_foo, pos));
     pos = REFLECTC_LOOKUP(struct, foo, number, wrapped_foo);
@@ -627,7 +661,8 @@ check_array(void)
     pos = REFLECTC_LOOKUP(struct, foo, string, wrapped_foo);
     ASSERT_STR_EQ(foo.string, reflectc_get_member(wrapped_foo, pos));
 
-    reflectc_cleanup(wrapped_foo);
+    reflectc_cleanup(registry, wrapped_foo);
+    reflectc_dispose(registry);
 
     PASS();
 }
@@ -640,15 +675,17 @@ check_helper_utilities(void)
     struct bar **a_ptr_ptr = &a_ptr;
     struct bar ***a_ptr_ptr_ptr = &a_ptr_ptr;
     struct baz baz = { &a, &a, a_ptr_ptr_ptr, "helpers", LEVELS_TWO };
-    struct reflectc *wrapped_baz = reflectc_from_baz(&baz, NULL);
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
     size_t visits = 0;
-    const struct reflectc *member_a;
-    const struct reflectc *member_c;
-    const struct reflectc *missing;
+    const struct reflectc_wrap *member_a;
+    const struct reflectc_wrap *member_c;
+    const struct reflectc_wrap *missing;
 
     ASSERT_NEQ(NULL, wrapped_baz);
 
-    ASSERT_NEQ(0, reflectc_expand_all(wrapped_baz));
+    ASSERT_NEQ(0, reflectc_expand_all(registry, wrapped_baz));
     ASSERT_NEQ(0, reflectc_for_each(wrapped_baz, count_members, &visits));
     ASSERT_NEQ(0, visits);
 
@@ -664,16 +701,101 @@ check_helper_utilities(void)
         reflectc_require_member(wrapped_baz, "missing", strlen("missing"));
     ASSERT_EQ(NULL, missing);
 
-    reflectc_cleanup_members(wrapped_baz);
+    reflectc_cleanup_members(registry, wrapped_baz);
     baz.c = NULL;
-    reflectc_from_baz(&baz, wrapped_baz);
+    reflectc_from_baz(registry, &baz, wrapped_baz);
 
     member_c = reflectc_require_member(wrapped_baz, "c", strlen("c"));
     ASSERT_NEQ(NULL, member_c);
     ASSERT_NEQ(0, reflectc_is_null(member_c));
 
-    reflectc_cleanup(wrapped_baz);
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
 
+    PASS();
+}
+
+TEST
+check_registry_find_root_and_cached_constructor(void)
+{
+    struct bar a = { true, 7, "hydrate" };
+    struct bar *ap = &a;
+    struct bar **app = &ap;
+    struct bar ***appp = &app;
+    struct baz baz = { &a, &a, appp, "cache", LEVELS_ONE };
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+
+    struct reflectc_wrap *cached = reflectc_from_baz(registry, &baz, NULL);
+    ASSERT_EQ(wrapped_baz, cached);
+
+    ASSERT_EQ(wrapped_baz, reflectc_find(registry, &baz));
+
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
+    PASS();
+}
+
+TEST
+check_registry_find_nested_after_expand(void)
+{
+    struct bar a = { true, 42, "hello" };
+    struct bar b = { false, 9, "world" };
+    struct bar *cp = &b;
+    struct bar **cpp = &cp;
+    struct baz baz = { &a, &b, &cpp, "nested", LEVELS_TWO };
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+
+    /* 'a' is a pointer to struct bar. With depth <= 2 it is eagerly expanded.
+     */
+    size_t a_pos = REFLECTC_LOOKUP(struct, baz, a, wrapped_baz);
+    const struct reflectc_wrap *member_a = &wrapped_baz->members.array[a_pos];
+    ASSERT_EQ(member_a, reflectc_find(registry, baz.a));
+
+    /* 'c' is a triple pointer to bar; resolve to leaf and verify mapping */
+    size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
+    const struct reflectc_wrap *member_c = &wrapped_baz->members.array[c_pos];
+    struct bar *resolved = (struct bar *)reflectc_resolve(member_c);
+    ASSERT_NEQ(NULL, resolved);
+    /* 'b' was eagerly expanded, so the same pointee may already be cached */
+    const struct reflectc_wrap *found_before =
+        reflectc_find(registry, resolved);
+    ASSERT_NEQ(NULL, found_before);
+    ASSERT_EQ(1, reflectc_expand(registry, member_c));
+    ASSERT_EQ(member_c, reflectc_find(registry, resolved));
+
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
+    PASS();
+}
+
+TEST
+check_registry_erase(void)
+{
+    struct bar a = { true, 1, "x" };
+    struct bar *ap = &a;
+    struct bar **app = &ap;
+    struct bar ***appp = &app;
+    struct baz baz = { &a, &a, appp, "erase", LEVELS_ONE };
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+    ASSERT_EQ(wrapped_baz, reflectc_find(registry, &baz));
+
+    reflectc_erase(registry, &baz);
+    ASSERT_EQ(NULL, reflectc_find(registry, &baz));
+
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
     PASS();
 }
 
@@ -691,6 +813,9 @@ SUITE(wrapper)
     RUN_TEST(check_cleanup);
     RUN_TEST(check_array);
     RUN_TEST(check_helper_utilities);
+    RUN_TEST(check_registry_find_root_and_cached_constructor);
+    RUN_TEST(check_registry_find_nested_after_expand);
+    RUN_TEST(check_registry_erase);
 }
 
 GREATEST_MAIN_DEFS();

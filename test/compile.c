@@ -46,7 +46,7 @@ STATIC_ASSERT(sizeof(((struct foo *)0)->number) == sizeof(int[4]),
               foo_number_array_length);
 
 /* Ensure const and mutable metadata wrappers stay layout-compatible. */
-STATIC_ASSERT(sizeof(struct rc_compile) == sizeof(struct rc_compile_mut),
+STATIC_ASSERT(sizeof(struct rc_compile_wrap) == sizeof(struct rc_compile_wrap_mut),
               metadata_mut_layout);
 
 #undef STATIC_ASSERT
