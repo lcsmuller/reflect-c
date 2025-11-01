@@ -196,7 +196,6 @@ json_parse_impl(struct reflectc *registry,
                 member->tmpl->type);
             return;
         }
-        reflectc_expand(registry, member);
         for (size_t i = 0; i < p->capacity; ++i) {
             const size_t pos = reflectc_get_pos(member, p->buckets[i].key.buf,
                                                 p->buckets[i].key.length);
@@ -496,19 +495,46 @@ check_resolve_and_expand(void)
     size_t boolean_pos;
     size_t number_pos;
 
+    ASSERT_EQ(0, before);
     ASSERT_EQ(&value, reflectc_resolve(c_member));
-    ASSERT_EQ(1, reflectc_expand(registry, c_member));
-    if (before == 0) {
-        ASSERT_NEQ(0, c_member->members.length);
-    }
 
     boolean_pos = reflectc_get_pos(c_member, "boolean", strlen("boolean"));
     ASSERT_NEQ(SIZE_MAX, boolean_pos);
+    ASSERT_NEQ(before, c_member->members.length);
     ASSERT_EQ(true, *(bool *)reflectc_get_member(c_member, boolean_pos));
 
     number_pos = reflectc_get_pos(c_member, "number", strlen("number"));
     ASSERT_NEQ(SIZE_MAX, number_pos);
     ASSERT_EQ(value.number, *(int *)reflectc_get_member(c_member, number_pos));
+    ASSERT_EQ(1, reflectc_expand(NULL, c_member));
+
+    reflectc_cleanup(registry, wrapped_baz);
+    reflectc_dispose(registry);
+
+    PASS();
+}
+
+TEST
+check_expand_all_hydrates_nested_members(void)
+{
+    struct bar value = { true, 11, "autoeager" };
+    struct bar *first = &value;
+    struct bar **second = &first;
+    struct baz baz = { &value, &value, &second, "expand_all", LEVELS_TWO };
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_baz =
+        reflectc_from_baz(registry, &baz, NULL);
+    size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
+    const struct reflectc_wrap *c_member = &wrapped_baz->members.array[c_pos];
+
+    ASSERT_NEQ(NULL, wrapped_baz);
+    ASSERT_NEQ(NULL, c_member->registry);
+    ASSERT_NEQ(NULL, c_member->tmpl);
+    ASSERT_NEQ(NULL, c_member->tmpl->from_cb);
+    ASSERT_EQ(&value, reflectc_resolve(c_member));
+    ASSERT_EQ(0, c_member->members.length);
+    ASSERT_NEQ(0, reflectc_expand_all(NULL, wrapped_baz));
+    ASSERT_NEQ(0, c_member->members.length);
 
     reflectc_cleanup(registry, wrapped_baz);
     reflectc_dispose(registry);
@@ -686,7 +712,6 @@ check_helper_utilities(void)
 
     ASSERT_NEQ(NULL, wrapped_baz);
 
-    ASSERT_NEQ(0, reflectc_expand_all(registry, wrapped_baz));
     ASSERT_NEQ(0, reflectc_for_each(wrapped_baz, count_members, &visits));
     ASSERT_NEQ(0, visits);
 
@@ -696,6 +721,7 @@ check_helper_utilities(void)
 
     member_c = reflectc_require_member(wrapped_baz, "c", strlen("c"));
     ASSERT_NEQ(NULL, member_c);
+    ASSERT_NEQ(0, member_c->members.length);
     ASSERT_EQ(0, reflectc_is_null(member_c));
 
     missing =
@@ -808,6 +834,7 @@ SUITE(wrapper)
     RUN_TEST(check_json_parser_nullable_null);
     RUN_TEST(check_json_parser_rejects_nonnullable_null);
     RUN_TEST(check_resolve_and_expand);
+    RUN_TEST(check_expand_all_hydrates_nested_members);
     RUN_TEST(check_resolve_null_chain);
     RUN_TEST(check_extended_type_metadata);
     RUN_TEST(check_loop_through);

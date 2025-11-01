@@ -40,17 +40,17 @@ The returned pointer is allocated with `calloc`/`malloc`. Call `free()` on the o
 | Function | Description |
 | --- | --- |
 | `size_t reflectc_length(const struct reflectc *member)` | Returns effective length for array-like nodes. Auto-expands `length` when the declaration has dimensions (e.g., `[4]`). Returns `0` if `member` or its `ptr_value` is `NULL`. |
-| `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Performs a linear search through `root->members` for the given name. Returns `SIZE_MAX` when not found. |
+| `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Performs a linear search through `root->members` for the given name. Automatically expands `root` the first time it is queried. Returns `SIZE_MAX` when not found. |
 | `REFLECTC_LOOKUP(struct, foo, bar, root)` | Macro emitted per type; resolves to a constant index for `bar` inside `struct foo`. |
 | `unsigned reflectc_get_pointer_depth(const struct reflectc *member)` | Counts pointer levels inferred from the decorator and dimensions. Arrays count as one additional level. Returns `0` when the member or its `ptr_value` is `NULL`. |
 | `const void *reflectc_deref(const struct reflectc *member)` | Provides a convenient view of `member->ptr_value`. Automatically dereferences `T (*)[N]` and multi-level pointers (`**`, `***`) once. |
 | `void *reflectc_resolve(const struct reflectc *member)` | Walks through every pointer level encoded in the decorator until it reaches the concrete value. Returns `NULL` when any intermediate pointer is `NULL`. |
-| `int reflectc_expand(const struct reflectc *member)` | Lazily hydrates nested metadata by invoking the generator-provided `from_cb`. Returns non-zero once `member->members` has been populated. |
+| `int reflectc_expand(struct reflectc *registry, const struct reflectc *member)` | Lazily hydrates nested metadata by invoking the generator-provided `from_cb`. Pass `NULL` for `registry` to reuse the handle cached on `member`. Returns non-zero once `member->members` has been populated. |
 | `const void *reflectc_memcpy(const struct reflectc *dest, const void *src, size_t size)` | Copies raw bytes into the location described by `dest`. Guards against size mismatches and `NULL` pointers. Returns the destination address on success or `NULL` on failure. |
 | `const char *reflectc_string(const struct reflectc *dest, const char src[], size_t size)` | Ensures the target can accept string data (character pointer with depth ≥ 2), allocates storage when needed, then copies `size` bytes. Returns the written buffer. |
 | `void reflectc_array(const struct reflectc *root, size_t length)` | Extends the metadata buffer to describe `length` consecutive items. Useful for dynamic arrays when parsing unbounded inputs. |
-| `const void *reflectc_get_member(const struct reflectc *root, size_t pos)` | Shorthand for `reflectc_deref(&root->members.array[pos])` with bounds checking. Returns `NULL` when out of range. |
-| `const void *reflectc_set_member(const struct reflectc *root, size_t pos, const void *value, size_t size)` | Copies data into a member selected by index. Returns the destination pointer or `NULL` on error. |
+| `const void *reflectc_get_member(const struct reflectc *root, size_t pos)` | Shorthand for `reflectc_deref(&root->members.array[pos])` with bounds checking. Expands `root` the first time it is queried. Returns `NULL` when out of range. |
+| `const void *reflectc_set_member(const struct reflectc *root, size_t pos, const void *value, size_t size)` | Copies data into a member selected by index. Ensures `root` is expanded before writing. Returns the destination pointer or `NULL` on error. |
 
 ## Error Handling
 

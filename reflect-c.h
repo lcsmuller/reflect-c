@@ -66,6 +66,7 @@ struct REFLECTC_NS(_template) {
 
 #define REFLECTC_INSTANCE_FIELDS(_qualifier)                                  \
     _qualifier size_t length;                                                 \
+    struct REFLECTC_PREFIX *_qualifier registry;                              \
     _qualifier void *_qualifier ptr_value;                                    \
     _qualifier struct {                                                       \
         _qualifier size_t length;                                             \

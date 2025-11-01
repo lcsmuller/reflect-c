@@ -113,15 +113,23 @@ _reflectc_wrapper_prepare_root(struct REFLECTC_NS(_wrap_mut) *root,
                               const struct REFLECTC_NS(_template) *root_template,
                               void *self,
                               size_t elem_size,
-                              size_t length)
+                              size_t length,
+                              struct REFLECTC_PREFIX *registry)
 {
     size_t i;
 
-    if (root) return root;
+    if (root) {
+        size_t span = root->length ? root->length : length;
+        for (i = 0; i < span; ++i) {
+            root[i].registry = registry;
+        }
+        return root;
+    }
     if (!(root = calloc(length, sizeof *root))) return NULL;
 
     for (i = 0; i < length; ++i) {
         root[i].tmpl = root_template;
+        root[i].registry = registry;
         root[i].ptr_value =
             self ? (void *)((char *)self + i * elem_size) : NULL;
         root[i].length = length - i;
@@ -151,7 +159,8 @@ _reflectc_wrapper_prepare_members(
     struct REFLECTC_NS(_wrap_mut) *members_buf,
     size_t index,
     const struct REFLECTC_NS(_template) *template_members,
-    size_t n_members)
+    size_t n_members,
+    struct REFLECTC_PREFIX *registry)
 {
     struct REFLECTC_NS(_wrap_mut) *block = members_buf + index * n_members;
     size_t i;
@@ -159,6 +168,7 @@ _reflectc_wrapper_prepare_members(
     root_entry->members.length = n_members;
     for (i = 0; i < n_members; ++i) {
         block[i].tmpl = template_members + i;
+        block[i].registry = registry;
         block[i].ptr_value = NULL;
         block[i].length = 0;
         block[i].members.array = NULL;
@@ -186,7 +196,8 @@ _reflectc_wrapper_prepare_members(
         }                                                                     \
         const size_t length = _root ? REFLECTC_NS(_length)(_root) : 1;        \
         root = _reflectc_wrapper_prepare_root(root, &_type##__root_template,  \
-                                              self, sizeof *self, length);    \
+                                              self, sizeof *self, length,     \
+                                              registry);                      \
         if (!root) {                                                          \
             return NULL;                                                      \
         }                                                                     \
@@ -207,7 +218,7 @@ _reflectc_wrapper_prepare_members(
                 struct REFLECTC_NS(_wrap_mut) *m =                            \
                     _reflectc_wrapper_prepare_members(                        \
                         root + i, members_buf, i, _type##__member_templates,  \
-                        n_members);
+                        n_members, registry);
 #define _pick_member__(_name, _type, _decorator, _dimensions, _attrs)         \
                 m->ptr_value = &self->_name;                                  \
                 ++m;

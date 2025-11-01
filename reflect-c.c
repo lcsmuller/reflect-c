@@ -132,6 +132,19 @@ REFLECTC_NS(_get_pos)(const struct REFLECTC_NS(_wrap) * root,
                       const size_t length)
 {
     const struct REFLECTC_NS(_wrap) * m;
+
+    if (!root || !name || !length) {
+        return SIZE_MAX;
+    }
+
+    if (!root->members.array || !root->members.length) {
+        REFLECTC_NS(_expand)((struct REFLECTC_PREFIX *)root->registry, root);
+    }
+
+    if (!root->members.array || !root->members.length) {
+        return SIZE_MAX;
+    }
+
     for (m = &root->members.array[0];
          m != &root->members.array[root->members.length]; ++m)
     {
@@ -247,7 +260,9 @@ int
 REFLECTC_NS(_expand)(struct REFLECTC_PREFIX *registry,
                      const struct REFLECTC_NS(_wrap) * member)
 {
-    struct REFLECTC_NS(_wrap_mut) * mut;
+    struct REFLECTC_NS(_wrap_mut) *mut =
+        (struct REFLECTC_NS(_wrap_mut) *)member;
+    struct REFLECTC_PREFIX *ctx;
     void *child;
 
     if (!member || !member->tmpl || !member->tmpl->from_cb) {
@@ -257,12 +272,12 @@ REFLECTC_NS(_expand)(struct REFLECTC_PREFIX *registry,
         return 1;
     }
 
+    ctx = registry ? registry : mut->registry;
     child = REFLECTC_NS(_resolve)(member);
     if (!child) {
         return 0;
     }
-    mut = (struct REFLECTC_NS(_wrap_mut) *)member;
-    member->tmpl->from_cb(registry, child, (struct REFLECTC_NS(_wrap) *)mut);
+    member->tmpl->from_cb(ctx, child, (struct REFLECTC_NS(_wrap) *)mut);
     return member->members.length != 0;
 }
 
@@ -303,7 +318,14 @@ REFLECTC_NS(_set)(const struct REFLECTC_NS(_wrap) * member,
 const void *
 REFLECTC_NS(_get_member)(const struct REFLECTC_NS(_wrap) * root, size_t pos)
 {
-    if (!root || pos >= root->members.length) {
+    if (!root) {
+        return NULL;
+    }
+    if (!root->members.array || pos >= root->members.length) {
+        (void)REFLECTC_NS(_expand)((struct REFLECTC_PREFIX *)root->registry,
+                                   root);
+    }
+    if (!root->members.array || pos >= root->members.length) {
         return NULL;
     }
     return REFLECTC_NS(_deref)(root->members.array + pos);
@@ -315,7 +337,14 @@ REFLECTC_NS(_set_member)(const struct REFLECTC_NS(_wrap) * root,
                          const void *value,
                          size_t size)
 {
-    if (!root || pos >= root->members.length) {
+    if (!root) {
+        return NULL;
+    }
+    if (!root->members.array || pos >= root->members.length) {
+        (void)REFLECTC_NS(_expand)((struct REFLECTC_PREFIX *)root->registry,
+                                   root);
+    }
+    if (!root->members.array || pos >= root->members.length) {
         return NULL;
     }
     return REFLECTC_NS(_memcpy)(root->members.array + pos, value, size);
@@ -496,6 +525,8 @@ _reflectc_for_each_impl(const struct REFLECTC_NS(_wrap) * member,
         if (!cb(current, ctx)) {
             return 0;
         }
+        REFLECTC_NS(_expand)((struct REFLECTC_PREFIX *)current->registry,
+                             current);
         if (current->members.array && current->members.length) {
             if (!_reflectc_for_each_impl(current->members.array, cb, ctx)) {
                 return 0;
@@ -519,12 +550,13 @@ const struct REFLECTC_NS(_wrap)
                                    size_t len)
 {
     size_t pos;
+    const struct REFLECTC_NS(_wrap) * member;
 
-    if (!root || !root->members.array || !root->members.length) {
+    if (!root || !name || !len) {
         return NULL;
     }
-    if (!name || !len) {
-        return NULL;
+    if (!root->members.array || !root->members.length) {
+        REFLECTC_NS(_expand)((struct REFLECTC_PREFIX *)root->registry, root);
     }
 
     pos = REFLECTC_NS(_get_pos)(root, name, len);
@@ -532,7 +564,13 @@ const struct REFLECTC_NS(_wrap)
         return NULL;
     }
 
-    return root->members.array + pos;
+    if (!root->members.array || pos >= root->members.length) {
+        return NULL;
+    }
+
+    member = root->members.array + pos;
+    REFLECTC_NS(_expand)((struct REFLECTC_PREFIX *)member->registry, member);
+    return member;
 }
 
 int
@@ -578,23 +616,23 @@ REFLECTC_NS(_is_null)(const struct REFLECTC_NS(_wrap) * member)
 
 static int
 _reflectc_expand_all_impl(struct REFLECTC_PREFIX *registry,
-                          struct REFLECTC_NS(_wrap) * member)
+                          struct REFLECTC_NS(_wrap) * member,
+                          size_t count)
 {
-    size_t span;
     size_t i;
     int expanded = 0;
 
-    if (!member) return 0;
+    if (!member || !count) return 0;
 
-    span = member->length ? member->length : 1;
-    for (i = 0; i < span; ++i) {
+    for (i = 0; i < count; ++i) {
         struct REFLECTC_NS(_wrap) *current = member + i;
         if (REFLECTC_NS(_expand)(registry, current)) {
             ++expanded;
         }
         if (current->members.array && current->members.length) {
             expanded += _reflectc_expand_all_impl(
-                registry, (struct REFLECTC_NS(_wrap) *)current->members.array);
+                registry, (struct REFLECTC_NS(_wrap) *)current->members.array,
+                current->members.length);
         }
     }
     return expanded;
@@ -604,5 +642,8 @@ int
 REFLECTC_NS(_expand_all)(struct REFLECTC_PREFIX *registry,
                          struct REFLECTC_NS(_wrap) * root)
 {
-    return (!root) ? 0 : _reflectc_expand_all_impl(registry, root);
+    size_t count;
+    if (!root) return 0;
+    count = root->length ? root->length : 1;
+    return _reflectc_expand_all_impl(registry, root, count);
 }
