@@ -186,6 +186,10 @@ The runtime layer (`reflect-c.h` / `reflect-c.c`) manages metadata trees produce
 
 All wrappers share the same layout defined in `struct reflectc` so tooling can walk types generically.
 
+### Registry behavior
+
+If you enable the optional registry (`reflectc_init`, `reflectc_find`, `reflectc_put`, `reflectc_erase`), the generated `reflectc_from_<type>` constructors only register **root** wrappers created with `reuse == NULL`. Nested member expansion (`reflectc_expand` / eager pointer expansion) does **not** insert into the registry and will not overwrite existing entries. If you need cached access for a nested object, register it explicitly with `reflectc_put` and manage its lifetime.
+
 ## Examples
 
 ### JSON serialization/deserialization

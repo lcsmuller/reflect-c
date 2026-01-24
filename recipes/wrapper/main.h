@@ -240,7 +240,7 @@ _reflectc_wrapper_prepare_members(
 #define _pick_container_end(_namespace)                                       \
             }                                                                 \
         }                                                                     \
-        if (has && self) {                                                    \
+        if (has && self && !_root) {                                          \
             REFLECTC_NS(_put)(registry, self,                                 \
                                        (struct REFLECTC_NS(_wrap) *)root);    \
         }                                                                     \

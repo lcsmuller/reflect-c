@@ -775,28 +775,30 @@ check_registry_find_nested_after_expand(void)
     struct bar **cpp = &cp;
     struct baz baz = { &a, &b, &cpp, "nested", LEVELS_TWO };
     struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap sentinel = { 0 };
+    /* Seed registry to ensure nested expansion doesn't overwrite entries. */
+    ASSERT_EQ(1, reflectc_put(registry, &a, &sentinel));
+    ASSERT_EQ(&sentinel, reflectc_find(registry, &a));
+
     struct reflectc_wrap *wrapped_baz =
         reflectc_from_baz(registry, &baz, NULL);
-
     ASSERT_NEQ(NULL, wrapped_baz);
 
     /* 'a' is a pointer to struct bar. With depth <= 2 it is eagerly expanded.
      */
-    size_t a_pos = REFLECTC_LOOKUP(struct, baz, a, wrapped_baz);
-    const struct reflectc_wrap *member_a = &wrapped_baz->members.array[a_pos];
-    ASSERT_EQ(member_a, reflectc_find(registry, baz.a));
+    ASSERT_EQ(&sentinel, reflectc_find(registry, baz.a));
 
     /* 'c' is a triple pointer to bar; resolve to leaf and verify mapping */
     size_t c_pos = REFLECTC_LOOKUP(struct, baz, c, wrapped_baz);
     const struct reflectc_wrap *member_c = &wrapped_baz->members.array[c_pos];
     struct bar *resolved = (struct bar *)reflectc_resolve(member_c);
     ASSERT_NEQ(NULL, resolved);
-    /* 'b' was eagerly expanded, so the same pointee may already be cached */
+    /* Nested members are expanded but must not be registered. */
     const struct reflectc_wrap *found_before =
         reflectc_find(registry, resolved);
-    ASSERT_NEQ(NULL, found_before);
+    ASSERT_EQ(NULL, found_before);
     ASSERT_EQ(1, reflectc_expand(registry, member_c));
-    ASSERT_EQ(member_c, reflectc_find(registry, resolved));
+    ASSERT_EQ(NULL, reflectc_find(registry, resolved));
 
     reflectc_cleanup(registry, wrapped_baz);
     reflectc_dispose(registry);
