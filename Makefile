@@ -51,7 +51,10 @@ echo:
 	@ echo 'API_DIR: $(API_DIR)'
 	$(BUILD) HEADERS=$(HEADERS_EXPAND) $@
 
+# host-run generator tool: never build with target CFLAGS
+HOSTCC ?= cc
 $(TOOLS_DIR)/gen_tuples: $(TOOLS_DIR)/gen_tuples.c
+	$(HOSTCC) -O2 $< -o $@
 
 tuples: $(TOOLS_DIR)/gen_tuples
 	@echo "Generating reflect-c_TUPLE.h with MAX=$(REFLECTC_TUPLE_MAX)"

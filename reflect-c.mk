@@ -7,6 +7,12 @@
 # example: /*#! #define HELLO 1 */  becomes  #define HELLO 1
 EXPAND_COMMENTS = reflect-c_EXPAND_COMMENTS
 
+# The comment expander runs on the HOST at generation time: build it with
+# host flags, never the target CFLAGS (cross-compiling or sanitizer flags
+# would otherwise break or poison the generator)
+HOSTCC      ?= cc
+HOSTCFLAGS  ?= -O2 -I.
+
 RECIPES               = reflect-c_RECIPES.recipe.h
 RECIPES_NO_EXT_EXPAND = "$$(echo $(RECIPES) | sed -e 's/\.recipe\.h//')"
 
@@ -29,7 +35,7 @@ DOXYGEN_DESC_EXPAND = "/**\n * @file $@\n * @author Reflect-C\n * @brief Reflect
 all: $(OUT_C) $(OUT_H)
 
 $(EXPAND_COMMENTS):
-	$(CC) $(CFLAGS) $@.c -o $@
+	$(HOSTCC) $(HOSTCFLAGS) $@.c -o $@
 
 $(OUT_H): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "Generating $@"
