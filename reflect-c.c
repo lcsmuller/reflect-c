@@ -148,13 +148,36 @@ REFLECTC_NS(_get_pos)(const struct REFLECTC_NS(_wrap) * root,
     for (m = &root->members.array[0];
          m != &root->members.array[root->members.length]; ++m)
     {
-        if (m->tmpl && m->tmpl->name.length == length
+        if (!m->tmpl) {
+            continue;
+        }
+        if (m->tmpl->name.length == length
             && !memcmp(m->tmpl->name.buf, name, length))
+        {
+            return (size_t)(m - root->members.array);
+        }
+        if (m->tmpl->alias.buf && m->tmpl->alias.length == length
+            && !memcmp(m->tmpl->alias.buf, name, length))
         {
             return (size_t)(m - root->members.array);
         }
     }
     return SIZE_MAX;
+}
+
+const char *
+REFLECTC_NS(_alias)(const struct REFLECTC_NS(_wrap) * member, size_t *length)
+{
+    if (!member || !member->tmpl) {
+        if (length) *length = 0;
+        return NULL;
+    }
+    if (member->tmpl->alias.buf) {
+        if (length) *length = member->tmpl->alias.length;
+        return member->tmpl->alias.buf;
+    }
+    if (length) *length = member->tmpl->name.length;
+    return member->tmpl->name.buf;
 }
 
 unsigned

@@ -45,15 +45,15 @@ _from_noop(struct REFLECTC_PREFIX *registry,
     static const struct REFLECTC_NS(_template)                                \
         _type##__member_templates[] = {
 #define _pick_member__(_namespace, _qualifier, _container, _type, _decorator, \
-                      _name, _dimensions, _attrs)                             \
+                      _name, _alias, _dimensions, _attrs)                     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
-            _str(_decorator), _str(_name), _str(_dimensions),                 \
+            _str(_decorator), _str(_name), _str(_alias), _str(_dimensions),   \
             (enum REFLECTC_NS(_types))(REFLECTC_TYPES(_type)),                \
             (unsigned long)(_attrs), { 0, NULL }, _from_noop },
 #define _pick_member_container(_namespace, _qualifier, _container, _type,     \
-                              _decorator, _name, _dimensions, _attrs)         \
+                              _decorator, _name, _alias, _dimensions, _attrs) \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
-            _str(_decorator), _str(_name), _str(_dimensions),                 \
+            _str(_decorator), _str(_name), _str(_alias), _str(_dimensions),   \
             (enum REFLECTC_NS(_types))(REFLECTC_TYPES(_container)),           \
             (unsigned long)(_attrs), { 0, NULL },                             \
 /*#! #ifdef */ REFLECTC_DEFINED##__##_type /*#! */                            \
@@ -65,9 +65,9 @@ _from_noop(struct REFLECTC_PREFIX *registry,
 #define _pick_member_struct _pick_member_container
 #define _pick_member_union _pick_member_container
 #define _pick_member_enum(_namespace, _qualifier, _container, _type,          \
-                          _decorator, _name, _dimensions, _attrs)             \
+                          _decorator, _name, _alias, _dimensions, _attrs)     \
         { sizeof(_container _type _decorator _dimensions), _str(_qualifier),  \
-            _str(_decorator), _str(_name), _str(_dimensions),                 \
+            _str(_decorator), _str(_name), _str(_alias), _str(_dimensions),   \
             (enum REFLECTC_NS(_types))(REFLECTC_TYPES(_container)),           \
             (unsigned long)(_attrs), { 0, NULL }, _from_noop },
 #define _pick_table_end(_container, _type)                                    \
@@ -79,6 +79,7 @@ _from_noop(struct REFLECTC_PREFIX *registry,
             { NULL, 0 },                                                      \
             { NULL, 0 },                                                      \
             { #_type, sizeof(#_type) - 1 },                                   \
+            { NULL, 0 },                                                      \
             { NULL, 0 },                                                      \
             (enum REFLECTC_NS(_types))(REFLECTC_TYPES(_container)),           \
             0ul,                                                              \
@@ -92,9 +93,10 @@ _from_noop(struct REFLECTC_PREFIX *registry,
 #define REFLECTC_STRUCT(_type) _pick_table(struct, _type)
 #define REFLECTC_UNION(_type) _pick_table(union, _type)
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
-            _dimensions, _attrs)                                              \
+            _alias, _dimensions, _attrs)                                      \
         _pick_member_##_container(_namespace, _qualifier, _container, _type,  \
-                                 _decorator, _name, _dimensions, _attrs)
+                                 _decorator, _name, _alias, _dimensions,      \
+                                 _attrs)
 #define REFLECTC_STRUCT_END(_namespace) _pick_table_end(struct, _namespace)
 #define REFLECTC_UNION_END(_namespace) _pick_table_end(union, _namespace)
 #include "reflect-c_EXPAND.h"
@@ -251,7 +253,7 @@ _reflectc_wrapper_prepare_members(
 #define REFLECTC_STRUCT(_type) _pick_implementation(struct, _type)
 #define REFLECTC_UNION(_type) _pick_implementation(union, _type)
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
-            _dimensions, _attrs)                                              \
+            _alias, _dimensions, _attrs)                                      \
         _pick_member_##_container(_name, _type, _decorator, _dimensions,      \
                                   _attrs)
 #define REFLECTC_STRUCT_END(_namespace) _pick_container_end(_namespace)
@@ -262,7 +264,7 @@ _reflectc_wrapper_prepare_members(
 #define REFLECTC_STRUCT(_type) static _pick_implementation(struct, _type)
 #define REFLECTC_UNION(_type) static _pick_implementation(union, _type)
 #define RCF(_namespace, _qualifier, _container, _type, _decorator, _name,     \
-            _dimensions, _attrs)                                              \
+            _alias, _dimensions, _attrs)                                      \
             _pick_member_##_container(_name, _type, _decorator, _dimensions,  \
                                       _attrs)
 #define REFLECTC_STRUCT_END(_namespace) _pick_container_end(_namespace)

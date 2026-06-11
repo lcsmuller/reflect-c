@@ -51,7 +51,7 @@ struct REFLECTC_NS(_template) {
     const struct {
         const char *const buf;
         const size_t length;
-    } qualifier, decorator, name, dimensions;
+    } qualifier, decorator, name, alias, dimensions;
     const enum REFLECTC_NS(_types) type;
     const unsigned long attrs;
     const struct {
@@ -103,6 +103,12 @@ size_t REFLECTC_NS(_length)(const struct REFLECTC_NS(_wrap) * member);
 size_t REFLECTC_NS(_get_pos)(const struct REFLECTC_NS(_wrap) * root,
                              const char *const name,
                              const size_t len);
+
+/* Serialized name of a member: its alias when one is declared in the
+ * recipe (8th tuple slot), otherwise its C member name. Use this when
+ * mapping members to an external format (e.g. JSON keys). */
+const char *REFLECTC_NS(_alias)(const struct REFLECTC_NS(_wrap) * member,
+                                size_t *length);
 
 void REFLECTC_NS(_array)(const struct REFLECTC_NS(_wrap) * root,
                          const size_t length);

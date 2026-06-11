@@ -695,6 +695,44 @@ check_array(void)
 }
 
 TEST
+check_alias_serialized_name(void)
+{
+    struct foo foo = { true, { 1, 2, 3, 4 }, "hello world", NULL };
+    struct reflectc *registry = reflectc_init();
+    struct reflectc_wrap *wrapped_foo =
+        reflectc_from_foo(registry, &foo, NULL);
+    const struct reflectc_wrap *member;
+    size_t pos, alias_pos, len = 0;
+    const char *serialized;
+
+    /* 'string' is aliased to 'text' in foo.recipe.h: get_pos must match
+     * the C name and the alias, resolving to the same member */
+    pos = reflectc_get_pos(wrapped_foo, "string", strlen("string"));
+    ASSERT_NEQ(SIZE_MAX, pos);
+    alias_pos = reflectc_get_pos(wrapped_foo, "text", strlen("text"));
+    ASSERT_EQ(pos, alias_pos);
+
+    /* reflectc_alias yields the alias when declared... */
+    member = &wrapped_foo->members.array[pos];
+    serialized = reflectc_alias(member, &len);
+    ASSERT_STR_EQ("text", serialized);
+    ASSERT_EQ(strlen("text"), len);
+
+    /* ...and falls back to the member name otherwise */
+    pos = reflectc_get_pos(wrapped_foo, "boolean", strlen("boolean"));
+    ASSERT_NEQ(SIZE_MAX, pos);
+    member = &wrapped_foo->members.array[pos];
+    serialized = reflectc_alias(member, &len);
+    ASSERT_STR_EQ("boolean", serialized);
+    ASSERT_EQ(strlen("boolean"), len);
+
+    reflectc_cleanup(registry, wrapped_foo);
+    reflectc_dispose(registry);
+
+    PASS();
+}
+
+TEST
 check_helper_utilities(void)
 {
     struct bar a = { true, 7, "hydrate" };
@@ -842,6 +880,7 @@ SUITE(wrapper)
     RUN_TEST(check_loop_through);
     RUN_TEST(check_cleanup);
     RUN_TEST(check_array);
+    RUN_TEST(check_alias_serialized_name);
     RUN_TEST(check_helper_utilities);
     RUN_TEST(check_registry_find_root_and_cached_constructor);
     RUN_TEST(check_registry_find_nested_after_expand);

@@ -34,7 +34,7 @@ The `container` argument must be one of `struct`, `union`, or `enum`. The `count
 Structs and unions share the same tuple signature:
 
 ```c
-(_, qualifier, container, type, decorator, name, dimensions)
+(qualifier, container, type, decorator, name, alias, dimensions, attrs)
 ```
 
 - **qualifier** - `const`, `volatile`, or `_` (underscore) for none.
@@ -42,6 +42,12 @@ Structs and unions share the same tuple signature:
 - **type** - the raw type identifier (e.g., `int`, `foo`, `bar`).
 - **decorator** - pointer suffix (`*`, `**`, etc.) or `_` for scalars.
 - **name** - member name.
+- **alias** - serialized-name override as a bare token, or `_` for none. When
+  set, `reflectc_alias()` reports it instead of the member name and
+  `reflectc_get_pos()` matches it in addition to the member name. Use it when
+  an external format's key cannot be (or should not be) the C member name —
+  e.g. C keywords (`default`, `inline`) or diverging wire names. The token is
+  stringified verbatim, so keywords are fine.
 - **dimensions** - array declarators such as `[4]` or `_` when absent.
 - **attrs** - user-defined attribute mask (any `unsigned long` constant expression, e.g. `0ul`).
 
@@ -49,13 +55,19 @@ Examples:
 
 ```c
 PUBLIC(struct, person, 3, (
-    (_, _, char, *, name, _, 0ul),
-    (_, _, int, _, age, _, 0ul),
-    (_, struct, address, _, address, _, 0ul)
+    (_, _, char, *, name, _, _, 0ul),
+    (_, _, int, _, age, _, _, 0ul),
+    (_, struct, address, _, address, _, _, 0ul)
 ))
 
 PRIVATE(struct, bucket, 1, (
-    (_, _, int, _, items, [32], 0ul)
+    (_, _, int, _, items, _, [32], 0ul)
+))
+
+/* 'Default' is a C-keyword collision: serialized as "default" */
+PUBLIC(struct, option, 2, (
+    (_, _, char, *, label, _, _, 0ul),
+    (_, _, bool, _, Default, default, _, 0ul)
 ))
 ```
 

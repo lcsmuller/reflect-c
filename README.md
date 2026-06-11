@@ -46,10 +46,10 @@ The pipeline is intentionally pure-C, so the same commands work on any system wi
    #endif
 
    PUBLIC(struct, person, 4, (
-       (_, _, char, *, name, _, 0ul),
-       (_, _, int, _, age, _, 0ul),
-       (_, _, bool, _, active, _, 0ul),
-       (_, _, char, *, email, _, 0ul)
+       (_, _, char, *, name, _, _, 0ul),
+       (_, _, int, _, age, _, _, 0ul),
+       (_, _, bool, _, active, _, _, 0ul),
+       (_, _, char, *, email, _, _, 0ul)
    ))
    ```
 

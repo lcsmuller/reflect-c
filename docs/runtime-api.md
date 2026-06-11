@@ -40,7 +40,8 @@ The returned pointer is allocated with `calloc`/`malloc`. Call `free()` on the o
 | Function | Description |
 | --- | --- |
 | `size_t reflectc_length(const struct reflectc *member)` | Returns effective length for array-like nodes. Auto-expands `length` when the declaration has dimensions (e.g., `[4]`). Returns `0` if `member` or its `ptr_value` is `NULL`. |
-| `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Performs a linear search through `root->members` for the given name. Automatically expands `root` the first time it is queried. Returns `SIZE_MAX` when not found. |
+| `size_t reflectc_get_pos(const struct reflectc *root, const char *name, size_t len)` | Performs a linear search through `root->members` for the given name, matching either the C member name or its declared alias. Automatically expands `root` the first time it is queried. Returns `SIZE_MAX` when not found. |
+| `const char *reflectc_alias(const struct reflectc *member, size_t *length)` | Serialized name of a member: the alias declared in the recipe (6th tuple slot) when present, otherwise the C member name. Stores the name length in `*length` when non-NULL. |
 | `REFLECTC_LOOKUP(struct, foo, bar, root)` | Macro emitted per type; resolves to a constant index for `bar` inside `struct foo`. |
 | `unsigned reflectc_get_pointer_depth(const struct reflectc *member)` | Counts pointer levels inferred from the decorator and dimensions. Arrays count as one additional level. Returns `0` when the member or its `ptr_value` is `NULL`. |
 | `const void *reflectc_deref(const struct reflectc *member)` | Provides a convenient view of `member->ptr_value`. Automatically dereferences `T (*)[N]` and multi-level pointers (`**`, `***`) once. |
