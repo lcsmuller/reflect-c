@@ -27,10 +27,11 @@ CPP       = cc -E # If you run into issues, try changing this to 'cpp'
 CPPFLAGS += -nostdinc -P -CC
 
 # Convert 'foo/bar_baz-tuna.recipe.h' -> 'FOO_BAR_BAZ_TUNA_H'
-# TODO: Evaluate if the sed expressions can be joined (see https://unix.stackexchange.com/a/145409)
-HEADER_TAG_EXPAND   = "$$(echo '$<' | sed -e 's/\(.*\)\.recipe.h/\1/' | sed -e 's/\//_/g' | sed -e 's/-/_/g' | tr '[:lower:]' '[:upper:]')_H"
-# Doxygen file description
-DOXYGEN_DESC_EXPAND = "/**\n * @file $@\n * @author Reflect-C\n * @brief Reflect-C generated code\n */\n"
+# Map every non-alphanumeric to '_' (paths may carry '.', '/', '-', etc.),
+# then strip leading '_' so '../' prefixes can't yield reserved identifiers
+HEADER_TAG_EXPAND   = "$$(echo '$<' | sed -e 's/\.recipe\.h$$//' -e 's/[^[:alnum:]]/_/g' -e 's/^_*//' | tr '[:lower:]' '[:upper:]')_H"
+# Doxygen file description (printf format string; file name passed via %s)
+DOXYGEN_DESC_FMT = '/**\n * @file %s\n * @author Reflect-C\n * @brief Reflect-C generated code\n */\n'
 
 all: $(OUT_C) $(OUT_H)
 
@@ -39,14 +40,14 @@ $(EXPAND_COMMENTS):
 
 $(OUT_H): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "Generating $@"
-	@ echo "#ifndef $(HEADER_TAG_EXPAND)" > $@
-	@ echo "#define $(HEADER_TAG_EXPAND)\n" >> $@
+	@ printf '#ifndef %s\n' $(HEADER_TAG_EXPAND) > $@
+	@ printf '#define %s\n\n' $(HEADER_TAG_EXPAND) >> $@
 	$(CPP) $(CFLAGS) -DREFLECTC_DEFINITIONS -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_HEADER -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
-	@ echo "\n#endif /* $(HEADER_TAG_EXPAND) */" >> $@
+	@ printf '\n#endif /* %s */\n' $(HEADER_TAG_EXPAND) >> $@
 $(OUT_C): $(TEMPFILE) $(RECIPES) $(EXPAND_COMMENTS)
 	@ echo "Adding forward definitions to $@"
-	@ echo "#include \"$(OUT_H_BASENAME)\"" > $@
+	@ printf '#include "%s"\n' $(OUT_H_BASENAME) > $@
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_FORWARD -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	@ echo "Generating $@"	
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
@@ -58,12 +59,12 @@ $(HEADERS): $(RECIPES) $(EXPAND_COMMENTS)
 .SUFFIXES: .recipe.h .h
 .recipe.h.h:
 	@ echo "Generating $@"
-	@ echo $(DOXYGEN_DESC_EXPAND) > $@
-	@ echo "#ifndef $(HEADER_TAG_EXPAND)" >> $@
-	@ echo "#define $(HEADER_TAG_EXPAND)\n" >> $@
+	@ printf $(DOXYGEN_DESC_FMT) "$@" > $@
+	@ printf '#ifndef %s\n' $(HEADER_TAG_EXPAND) >> $@
+	@ printf '#define %s\n\n' $(HEADER_TAG_EXPAND) >> $@
 	$(CPP) $(CFLAGS) -DREFLECTC_DEFINITIONS -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
 	$(CPP) $(CFLAGS) $(DFLAGS) -DREFLECTC_HEADER -DREFLECTC_ENTRY=\"$<\" $(CPPFLAGS) $(RECIPES) | ./$(EXPAND_COMMENTS) >> $@
-	@ echo "\n#endif /* $(HEADER_TAG_EXPAND) */" >> $@
+	@ printf '\n#endif /* %s */\n' $(HEADER_TAG_EXPAND) >> $@
 
 echo:
 	@ echo 'RECIPES_NO_EXT: $(RECIPES_NO_EXT)'

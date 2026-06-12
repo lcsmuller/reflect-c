@@ -16,9 +16,10 @@ DFLAGS  = -DREFLECTC_WRAPPER
 
 # Convert %.recipe.h -> %.h
 HEADERS_EXPAND       = "$$(echo $(API_DIR)/*.recipe.h | sed -e 's/\.recipe\.h/.h/g')"
-# Join all API_DIR files together
+# Join all API_DIR files together (LC_ALL=C sort: glob order is
+# locale/shell dependent, normalize it so output is reproducible)
 TEMPFILE        = reflect-c_GENERATED.recipe.h
-TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.recipe.h); for header in $$headers; do echo "\#include \"$$header\"" >> $(TEMPFILE); done
+TEMPFILE_EXPAND = headers=$$(echo $(API_DIR)/*.recipe.h | tr ' ' '\n' | LC_ALL=C sort); for header in $$headers; do printf '\#include "%s"\n' "$$header" >> $(TEMPFILE); done
 # Build reflect-c.mk with the correct variables
 BUILD = $(MAKE) OUT_NO_EXT=$(OUT) DFLAGS="$(DFLAGS)" -f reflect-c.mk
 
